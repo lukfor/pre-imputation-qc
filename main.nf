@@ -103,12 +103,12 @@ process mergeVcfFiles() {
       --minSnpCallRate ${params.minSnpCallRate}  \
       --minSampleCallRate ${params.minSampleCallRate}  \
       --chunkSize ${params.chunkSize} \
-      --output ${params.project}
+      --output ${params.project}.qc
 
     # Filter by snp call rate and by sample call rate
     vcftools --gzvcf ${params.project}.unfiltered.vcf.gz  \
-      --exclude ${params.project}.snps.excluded  \
-      --remove ${params.project}.samples.excluded  \
+      --exclude ${params.project}.qc.snps.excluded  \
+      --remove ${params.project}.qc.samples.excluded  \
       --recode --stdout | bgzip -c > ${params.project}.vcf.gz
     tabix ${params.project}.vcf.gz
 
