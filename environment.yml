@@ -1,0 +1,11 @@
+name: gwas-qc
+channels:
+  - defaults
+  - bioconda
+  - conda-forge
+dependencies:
+  - bcftools=1.9
+  - vcftools=0.1.16
+  - plink=1.90b6.18
+  - java-jdk=8.0.112
+  - unzip=6.0
