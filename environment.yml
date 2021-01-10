@@ -16,8 +16,8 @@ dependencies:
   - r-rmarkdown=2.6
   - r-ggplot2=3.3.3
   - r-dplyr=1.0.2
-  - r-data.table
-  - r-htmltools  
+  - r-dt=0.17
+  - r-htmltools
   - pandoc=2.11.3
   - cairo
   - xorg-libxt

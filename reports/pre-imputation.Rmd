@@ -6,47 +6,95 @@ params:
   chip: test-chip
   samples: ../tests/output/single/29sep20_GSA_PLINK.qc.samples ../tests/output/single/31aug20_GSA_PLINK.qc.samples
   snps: ../tests/output/single/29sep20_GSA_PLINK.qc.snps ../tests/output/single/31aug20_GSA_PLINK.qc.snps
+  samples_merged: ../tests/output/test-gwas.qc.samples
   samples_excluded: ../tests/output/test-gwas.qc.samples.excluded
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+options(warn = -1) 
+
 library(ggplot2)
+library(DT)
 library(dplyr)
+```
+
+
+```{r, echo=FALSE}
+samples <- read.csv(params$samples_merged, sep="")
+samples_count <- length(unique(samples$sample))
+if (!file.size(params$samples_excluded) == 0) {
+    excluded_samples <- read.csv(params$samples_excluded, sep="",header = FALSE)
+    excluded_samples_count <- dim(excluded_samples)[1]
+}else {
+  excluded_samples_count = 0
+}
 ```
 
 ## Summary
 
-- Project: `r params$project`
-- Chip: `r params$chip`
+| Parameter     | Value                                              |
+| ------------- |----------------------------------------------------|
+| Project       | `r params$project`                                 |
+| Chip          | `r params$chip`                                    |
+| Samples       | `r samples_count - excluded_samples_count` samples |
+| SNPs          | TODO                                               |
 
-## SNP Call Rate
+## Excluded Samples
 
-```{r snps, echo=FALSE}
-filenames <- unlist(strsplit(params$snps, " "))
-for (filename in filenames){
-  snps <- read.csv(filename, sep="")
-  print(ggplot(snps, aes(x=call_rate))+geom_histogram()+ggtitle(filename))
+<div class="alert alert-info">
+**`r excluded_samples_count`** samples excluded due to low call rate.
+</div>
+
+```{r, echo=FALSE}
+if (excluded_samples_count > 0) {
+    datatable(excluded_samples)
 }
 ```
 
+## Runs
+
+TODO:
+
+- number of runs
+- SNPs per run
+- avg Sample call rate
+
 ## Sample Call Rate
+
+### All Samples
+
+```{r, echo=FALSE}
+ggplot(samples, aes(x=call_rate)) + geom_histogram(binwidth = 0.05)
+```
+
+## Runs
 
 ```{r samples, echo=FALSE}
 filenames <- unlist(strsplit(params$samples, " "))
 for (filename in filenames){
   samples <- read.csv(filename, sep="")
-  
-  # if (!file.size(params$samples_excluded) == 0) {
-  #  excluded_samples <- read.csv(params$samples_excluded, sep="",header = FALSE)
-  #  excluded_samples$excluded <- "true"
-  #  samples <- left_join(samples, excluded_samples, by = c("sample" = "V1"))
-  #} else {
-   # samples$exclude <- "false"
-  
-  #}
- print(ggplot(samples, aes(x=chunk, y=sample)) + geom_tile(aes(fill=call_rate))+ggtitle(filename) +scale_fill_gradient(low = "blue", high = "white",limits=c(0,1)))
+  print(
+    ggplot(samples, aes(x=chunk, y=sample)) +
+      geom_tile(aes(fill=call_rate)) +
+      scale_fill_gradient(low = "red", high = "white",limits=c(0,1)) +
+      ggtitle(filename) 
+    )
 }
+```
 
-#apply(filenames, 1, plotSamples)
+## SNP Call Rate
+
+## Runs
+
+```{r snps, echo=FALSE}
+filenames <- unlist(strsplit(params$snps, " "))
+for (filename in filenames){
+  snps <- read.csv(filename, sep="")
+  print(
+    ggplot(snps, aes(x=call_rate)) +
+      geom_histogram(binwidth = 0.05) +
+      ggtitle(filename)
+    )
+}
 ```
