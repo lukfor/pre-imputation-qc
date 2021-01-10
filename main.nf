@@ -12,6 +12,7 @@ params.refalt_file = "data/${params.chip}.RefAlt"
 
 
 VcfQualityControl = "$baseDir/bin/VcfQualityControl.java"
+pre_imputation_report = file("$baseDir/reports/pre-imputation.Rmd")
 
 if (!params.input) {
     exit 1, "Plink files not specified"
@@ -160,12 +161,13 @@ process createReport {
     file stats from merged_vcf_statistics.collect()
     file samples_runs from samples_runs_ch.collect()
     file snps_runs from snps_runs_ch.collect()
+    file pre_imputation_report
 
   output:
     file "*.html" into report_ch
 
   """
-  Rscript -e "require( 'rmarkdown' ); render('$baseDir/reports/pre-imputation.Rmd', params = list(project = '${params.project}', chip = '${params.chip}', samples = '${samples_runs}', snps = '${snps_runs}', samples_excluded = '${params.project}.qc.samples.excluded'), knit_root_dir='\$PWD', output_file='\$PWD/pre-imputation-report.html')"
+  Rscript -e "require( 'rmarkdown' ); render('${pre_imputation_report}', params = list(project = '${params.project}', chip = '${params.chip}', samples = '${samples_runs}', snps = '${snps_runs}', samples_excluded = '${params.project}.qc.samples.excluded'), knit_root_dir='\$PWD', output_file='\$PWD/pre-imputation-report.html')"
   """
 
 }
