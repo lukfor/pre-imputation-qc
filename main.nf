@@ -7,8 +7,8 @@ params.chunkSize= 20000000
 params.minSampleCallRate = 0.5
 params.minSnpCallRate = 0.9
 
-params.strand_file = "data/${params.chip}.strand"
-params.refalt_file = "data/${params.chip}.RefAlt"
+params.strand_file = "$baseDir/data/${params.chip}.strand"
+params.refalt_file = "$baseDir/data/${params.chip}.RefAlt"
 
 
 VcfQualityControl = "$baseDir/bin/VcfQualityControl.java"
