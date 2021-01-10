@@ -17,6 +17,8 @@ if (!params.input) {
     exit 1, "Plink files not specified"
 }
 
+// TODO: check strand/refalt file
+
 // load all plink files from input folder
 Channel.fromFilePairs("${params.input}").set {plink_files_ch}
 strand_file_ch = file(params.strand_file)
@@ -37,38 +39,46 @@ process filterAndFixStrandFlips {
     file "${filename}.vcf.gz" into vcf_files_ch
     file "${filename}.vcf.gz.tbi" into vcf_files_index_ch
 
+  """
+  # replace all spaces with underscore (e.g. spaces in Sample IDs)
+  sed -e 's/ /_/g' ${filename}.ped > ${filename}.fixed.ped
+  cp ${filename}.map ${filename}.fixed.map
 
-  script:
-    """
-    #!/bin/bash
-    set -e
+  # TODO: write statistics before filtering. convert immideatly to vcf and update "update_build.sh" script?
 
-    # replace all spaces with underscore (e.g. spaces in Sample IDs)
-    sed -e 's/ /_/g' ${filename}.ped > ${filename}.fixed.ped
-    cp ${filename}.map ${filename}.fixed.map
+  # Remove all indels, "I" and "D"
+  plink --file ${filename}.fixed \
+    --snps-only just-acgt \
+    --make-bed \
+    --out ${filename}.binary
 
-    # TODO: write statistics before filtering. convert immideatly to vcf and update "update_build.sh" script?
+  # Remove all non-autosomale SNPs
+  plink --bfile ${filename}.binary \
+    --chr 1-22 \
+    --make-bed \
+    --out ${filename}.autosomes
 
-    # filter out all I and D?
-    plink --file ${filename}.fixed --snps-only just-acgt --make-bed  --out ${filename}.binary
+  # https://www.well.ox.ac.uk/~wrayner/strand/update_build.sh
+  update_build.sh \
+    ${filename}.autosomes \
+    ${strand_file} \
+    ${filename}.autosomes.strand
 
-    # Remove all non-autosomale SNPs
-    plink --bfile ${filename}.binary --chr 1-22 --make-bed  --out ${filename}.autosomes
+  # Harmonize ref/alt alleles and retain only SNPs in the refalt file
+  plink --bfile ${filename}.autosomes.strand \
+    --chr 1-22 \
+    --extract ${refalt_file} \
+    --reference-allele ${refalt_file} \
+    --recode vcf \
+    --out ${filename}
 
-    # https://www.well.ox.ac.uk/~wrayner/strand/update_build.sh
-    sh $baseDir/bin/update_build.sh ${filename}.autosomes ${strand_file} ${filename}.autosomes.strand
+  bgzip ${filename}.vcf
+  tabix ${filename}.vcf.gz
 
-    # TODO: add  --extract ${refalt_file} --reference-allele ${refalt_file} in separat steps
+  # TODO: write statistics after filtering
 
-    plink --bfile ${filename}.autosomes.strand --recode vcf --out ${filename} --chr 1-22 --extract ${refalt_file} --reference-allele ${refalt_file}
-    bgzip ${filename}.vcf
-    tabix ${filename}.vcf.gz
-
-    # TODO: write statistics after filtering
-
-    # TODO: run VcfQualityControl just to get call rate to get a plot for each input file? important for snp_call rates.
-
-    """
+  # TODO: run VcfQualityControl just to get call rate to get a plot for each input file? important for snp_call rates.
+  """
 
 }
 
@@ -86,33 +96,29 @@ process mergeVcfFiles() {
     file "${params.project}.vcf.gz.tbi" into merged_vcf_file_index_ch
     file "${params.project}.qc.*" into merged_vcf_statistics
 
-  script:
-    """
-    #!/bin/bash
-    set -e
+  """
+  # TODO: check length of vc_files. if only one element, no merge needed, copy only.
 
-    # TODO: check length of vc_files. if only one element, no merge needed, copy only.
+  # TODO: -m id still needed with extract? use -O z to avoid bgzip.
+  bcftools merge -m id ${vcf_files} -O v > ${params.project}.unfiltered.vcf
+  bgzip ${params.project}.unfiltered.vcf
+  tabix ${params.project}.unfiltered.vcf.gz
 
-    # TODO: -m id still needed with extract? use -O z to avoid bgzip.
-    bcftools merge -m id ${vcf_files} -O v > ${params.project}.unfiltered.vcf
-    bgzip ${params.project}.unfiltered.vcf
-    tabix ${params.project}.unfiltered.vcf.gz
+  # Calculate snp call rate and sample call rate
+  jbang ${VcfQualityControl} ${params.project}.unfiltered.vcf.gz \
+    --minSnpCallRate ${params.minSnpCallRate}  \
+    --minSampleCallRate ${params.minSampleCallRate}  \
+    --chunkSize ${params.chunkSize} \
+    --output ${params.project}.qc
 
-    # Calculate snp call rate and sample call rate
-    jbang ${VcfQualityControl} ${params.project}.unfiltered.vcf.gz \
-      --minSnpCallRate ${params.minSnpCallRate}  \
-      --minSampleCallRate ${params.minSampleCallRate}  \
-      --chunkSize ${params.chunkSize} \
-      --output ${params.project}.qc
+  # Filter by snp call rate and by sample call rate
+  vcftools --gzvcf ${params.project}.unfiltered.vcf.gz  \
+    --exclude ${params.project}.qc.snps.excluded  \
+    --remove ${params.project}.qc.samples.excluded  \
+    --recode --stdout | bgzip -c > ${params.project}.vcf.gz
 
-    # Filter by snp call rate and by sample call rate
-    vcftools --gzvcf ${params.project}.unfiltered.vcf.gz  \
-      --exclude ${params.project}.qc.snps.excluded  \
-      --remove ${params.project}.qc.samples.excluded  \
-      --recode --stdout | bgzip -c > ${params.project}.vcf.gz
-    tabix ${params.project}.vcf.gz
-
-    """
+  tabix ${params.project}.vcf.gz
+  """
 
 }
 
@@ -129,20 +135,31 @@ process splitIntoChromosomes {
   output:
     file "${params.project}.chr*.vcf.gz" into chr_vcf_file_ch
 
-  script:
-    """
-    #!/bin/bash
-    set -e
-
-    # TODO: use -O z to avoid bgzip?
-    bcftools view -r ${chromosome} ${vcf_file} > ${params.project}.chr${chromosome}.vcf
-    bgzip ${params.project}.chr${chromosome}.vcf
-    tabix ${params.project}.chr${chromosome}.vcf.gz
-
-    """
+  """
+  # TODO: use -O z to avoid bgzip?
+  bcftools view -r ${chromosome} ${vcf_file} > ${params.project}.chr${chromosome}.vcf
+  bgzip ${params.project}.chr${chromosome}.vcf
+  tabix ${params.project}.chr${chromosome}.vcf.gz
+  """
 
 }
 
+
+process createReport {
+
+  publishDir "$params.output", mode: 'copy'
+
+  input:
+    file stats from merged_vcf_statistics.collect()
+
+  output:
+    file "*.html" into report_ch
+
+  """
+  Rscript -e "require( 'rmarkdown' ); render('$baseDir/reports/pre-imputation.Rmd', params = list(project = '${params.project}', chip = '${params.chip}', samples = '${params.project}.qc.samples', samples_excluded = '${params.project}.qc.samples.excluded'), knit_root_dir='\$PWD', output_file='\$PWD/pre-imputation-report.html')"
+  """
+
+}
 
 workflow.onComplete {
     println "Pipeline completed at: $workflow.complete"

@@ -1,11 +1,24 @@
-name: gwas-qc
+# You can use this file to create a conda environment for this pipeline:
+#   conda env create -f environment.yml
+name: pre-imputation
 channels:
   - defaults
   - bioconda
   - conda-forge
 dependencies:
-  - bcftools=1.9
+  - bcftools=1.11
   - vcftools=0.1.16
+  - htslib=1.11
   - plink=1.90b6.18
   - java-jdk=8.0.112
   - unzip=6.0
+  - r=4.0
+  - r-rmarkdown=2.6
+  - r-ggplot2=3.3.3
+  - r-dplyr=1.0.2
+  - r-data.table
+  - r-htmltools  
+  - pandoc=2.11.3
+  - cairo
+  - xorg-libxt
+  - fonts-anaconda=1

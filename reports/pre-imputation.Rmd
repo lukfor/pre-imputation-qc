@@ -1,0 +1,41 @@
+---
+title: "Pre-Imputation-QC"
+author: "Lukas Forer"
+date: "1/8/2021"
+output: html_document
+params:
+  project: test-gwas-test
+  chip: test-chip
+  samples: ../tests/output/test-gwas.qc.samples
+  samples_excluded: ../tests/output/test-gwas.qc.samples.excluded
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+```
+
+Project: params$project
+
+Chip: params$chip
+
+## SNP Call Rate
+
+## Sample Call Rate
+
+```{r samples, echo=FALSE}
+samples <- read.csv(params$samples, sep="")
+
+if (!file.size(params$samples_excluded) == 0) {
+  excluded_samples <- read.csv(params$samples_excluded, sep="",header = FALSE)
+  excluded_samples$excluded <- "true"
+  samples <- left_join(samples, excluded_samples, by = c("sample" = "V1"))
+} else {
+  samples$exclude <- "false"
+
+}
+(ggplot(samples, aes(x=chunk, y=sample)) + geom_tile(aes(fill=call_rate)))
+
+
+```
