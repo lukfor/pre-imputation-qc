@@ -1,12 +1,11 @@
 ---
 title: "Pre-Imputation-QC"
-author: "Lukas Forer"
-date: "1/8/2021"
 output: html_document
 params:
   project: test-gwas-test
   chip: test-chip
-  samples: ../tests/output/test-gwas.qc.samples
+  samples: ../tests/output/single/29sep20_GSA_PLINK.qc.samples ../tests/output/single/31aug20_GSA_PLINK.qc.samples
+  snps: ../tests/output/single/29sep20_GSA_PLINK.qc.snps ../tests/output/single/31aug20_GSA_PLINK.qc.snps
   samples_excluded: ../tests/output/test-gwas.qc.samples.excluded
 ---
 
@@ -16,26 +15,38 @@ library(ggplot2)
 library(dplyr)
 ```
 
-Project: params$project
+## Summary
 
-Chip: params$chip
+- Project: `r params$project`
+- Chip: `r params$chip`
 
 ## SNP Call Rate
+
+```{r snps, echo=FALSE}
+filenames <- unlist(strsplit(params$snps, " "))
+for (filename in filenames){
+  snps <- read.csv(filename, sep="")
+  print(ggplot(snps, aes(x=call_rate))+geom_histogram()+ggtitle(filename))
+}
+```
 
 ## Sample Call Rate
 
 ```{r samples, echo=FALSE}
-samples <- read.csv(params$samples, sep="")
-
-if (!file.size(params$samples_excluded) == 0) {
-  excluded_samples <- read.csv(params$samples_excluded, sep="",header = FALSE)
-  excluded_samples$excluded <- "true"
-  samples <- left_join(samples, excluded_samples, by = c("sample" = "V1"))
-} else {
-  samples$exclude <- "false"
-
+filenames <- unlist(strsplit(params$samples, " "))
+for (filename in filenames){
+  samples <- read.csv(filename, sep="")
+  
+  # if (!file.size(params$samples_excluded) == 0) {
+  #  excluded_samples <- read.csv(params$samples_excluded, sep="",header = FALSE)
+  #  excluded_samples$excluded <- "true"
+  #  samples <- left_join(samples, excluded_samples, by = c("sample" = "V1"))
+  #} else {
+   # samples$exclude <- "false"
+  
+  #}
+ print(ggplot(samples, aes(x=chunk, y=sample)) + geom_tile(aes(fill=call_rate))+ggtitle(filename) +scale_fill_gradient(low = "blue", high = "white",limits=c(0,1)))
 }
-(ggplot(samples, aes(x=chunk, y=sample)) + geom_tile(aes(fill=call_rate)))
 
-
+#apply(filenames, 1, plotSamples)
 ```

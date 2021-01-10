@@ -38,6 +38,8 @@ process filterAndFixStrandFlips {
   output:
     file "${filename}.vcf.gz" into vcf_files_ch
     file "${filename}.vcf.gz.tbi" into vcf_files_index_ch
+    file "${filename}.qc.samples" into samples_runs_ch
+    file "${filename}.qc.snps" into snps_runs_ch
 
   """
   # replace all spaces with underscore (e.g. spaces in Sample IDs)
@@ -77,7 +79,12 @@ process filterAndFixStrandFlips {
 
   # TODO: write statistics after filtering
 
-  # TODO: run VcfQualityControl just to get call rate to get a plot for each input file? important for snp_call rates.
+  # Calculate snp call rate and sample call rate (per run)
+  jbang ${VcfQualityControl} ${filename}.vcf.gz \
+    --minSnpCallRate ${params.minSnpCallRate}  \
+    --minSampleCallRate ${params.minSampleCallRate}  \
+    --chunkSize ${params.chunkSize} \
+    --output ${filename}.qc
   """
 
 }
@@ -151,12 +158,14 @@ process createReport {
 
   input:
     file stats from merged_vcf_statistics.collect()
+    file samples_runs from samples_runs_ch.collect()
+    file snps_runs from snps_runs_ch.collect()
 
   output:
     file "*.html" into report_ch
 
   """
-  Rscript -e "require( 'rmarkdown' ); render('$baseDir/reports/pre-imputation.Rmd', params = list(project = '${params.project}', chip = '${params.chip}', samples = '${params.project}.qc.samples', samples_excluded = '${params.project}.qc.samples.excluded'), knit_root_dir='\$PWD', output_file='\$PWD/pre-imputation-report.html')"
+  Rscript -e "require( 'rmarkdown' ); render('$baseDir/reports/pre-imputation.Rmd', params = list(project = '${params.project}', chip = '${params.chip}', samples = '${samples_runs}', snps = '${snps_runs}', samples_excluded = '${params.project}.qc.samples.excluded'), knit_root_dir='\$PWD', output_file='\$PWD/pre-imputation-report.html')"
   """
 
 }
