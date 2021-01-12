@@ -1,0 +1,8 @@
+#!/bin/sh
+name=$1
+input=$2
+output=$3
+
+BASEDIR=$(dirname "$0")
+
+jbang $BASEDIR/VcfStatistics.java --name ${name} --input ${input} --output ${output}

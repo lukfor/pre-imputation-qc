@@ -12,6 +12,7 @@ params.refalt_file = "$baseDir/data/${params.chip}.RefAlt"
 
 
 VcfQualityControl = "$baseDir/bin/VcfQualityControl.java"
+VcfStatistics = "$baseDir/bin/VcfStatistics.java"
 pre_imputation_report = file("$baseDir/reports/pre-imputation.Rmd")
 
 if (!params.input) {
@@ -41,35 +42,62 @@ process filterAndFixStrandFlips {
     file "${filename}.vcf.gz.tbi" into vcf_files_index_ch
     file "${filename}.qc.samples" into samples_runs_ch
     file "${filename}.qc.snps" into snps_runs_ch
+    file "*.statistics" into filter_statistics_ch
 
   """
-  # replace all spaces with underscore (e.g. spaces in Sample IDs)
-  sed -e 's/ /_/g' ${filename}.ped > ${filename}.fixed.ped
-  cp ${filename}.map ${filename}.fixed.map
+  # Step 1: replace all spaces with underscore (e.g. spaces in Sample IDs)
+  sed -e 's/ /_/g' ${filename}.ped > ${filename}.step01.ped
+  cp ${filename}.map ${filename}.step01.map
 
-  # TODO: write statistics before filtering. convert immideatly to vcf and update "update_build.sh" script?
+  # TODO: count all lines in map file
 
-  # Remove all indels, "I" and "D"
-  plink --file ${filename}.fixed \
-    --snps-only just-acgt \
+
+  # Step 2: Remove all indels, "I" and "D"
+
+  # Write list of all indel calls (D/I allele codes)
+  plink --file ${filename}.step01 --list-23-indels --out ${filename}.step01
+  plink --file ${filename}.step01 \
+    --exclude ${filename}.step01.indel \
     --make-bed \
-    --out ${filename}.binary
+    --out ${filename}.step02
 
-  # Remove all non-autosomale SNPs
-  plink --bfile ${filename}.binary \
+
+  #plink --file ${filename}.step01 \
+#    --snps-only just-acgt \
+    #--make-bed \
+    #--out ${filename}.step02
+
+  plink-statistics "step02_remove_all_indels" ${filename}.step02 ${filename}.statistics
+
+
+  # Step 3: Remove all non-autosomale SNPs
+  plink --bfile ${filename}.step02 \
     --chr 1-22 \
     --make-bed \
-    --out ${filename}.autosomes
+    --out ${filename}.step03
 
-  # https://www.well.ox.ac.uk/~wrayner/strand/update_build.sh
+  plink-statistics "step03_remove_non_autosomale" ${filename}.step03 ${filename}.statistics
+
+
+  # Step 4: Update strand flips (https://www.well.ox.ac.uk/~wrayner/strand/update_build.sh)
   update_build.sh \
-    ${filename}.autosomes \
+    ${filename}.step03 \
     ${strand_file} \
-    ${filename}.autosomes.strand
+    ${filename}.step04
 
-  # Harmonize ref/alt alleles and retain only SNPs in the refalt file
-  plink --bfile ${filename}.autosomes.strand \
+  plink-statistics "step04_update_strand_flips" ${filename}.step04 ${filename}.statistics
+
+  # Step 5: Remvoe all autosomale snps after update strand flips
+  plink --bfile ${filename}.step04 \
     --chr 1-22 \
+    --make-bed \
+    --out ${filename}.step05
+
+    plink-statistics "step05_remove_non_autosomale" ${filename}.step05 ${filename}.statistics
+
+
+  # Step 6: Harmonize ref/alt alleles and retain only SNPs in the refalt file.
+  plink --bfile ${filename}.step05 \
     --extract ${refalt_file} \
     --reference-allele ${refalt_file} \
     --recode vcf \
@@ -78,7 +106,8 @@ process filterAndFixStrandFlips {
   bgzip ${filename}.vcf
   tabix ${filename}.vcf.gz
 
-  # TODO: write statistics after filtering
+  vcf-statistics "step06_harmonize_ref_alt_alleles" ${filename}.vcf.gz ${filename}.statistics
+
 
   # Calculate snp call rate and sample call rate (per run)
   jbang ${VcfQualityControl} ${filename}.vcf.gz \
@@ -103,6 +132,7 @@ process mergeVcfFiles() {
     file "${params.project}.vcf.gz" into merged_vcf_file_ch
     file "${params.project}.vcf.gz.tbi" into merged_vcf_file_index_ch
     file "${params.project}.qc.*" into merged_vcf_statistics
+    file "${params.project}.statistics" into merged_vcf_statistics2
 
   """
   # TODO: check length of vc_files. if only one element, no merge needed, copy only.
@@ -111,6 +141,8 @@ process mergeVcfFiles() {
   bcftools merge -m id ${vcf_files} -O v > ${params.project}.unfiltered.vcf
   bgzip ${params.project}.unfiltered.vcf
   tabix ${params.project}.unfiltered.vcf.gz
+
+  vcf-statistics "unfiltered" ${params.project}.unfiltered.vcf.gz ${params.project}.statistics
 
   # Calculate snp call rate and sample call rate
   jbang ${VcfQualityControl} ${params.project}.unfiltered.vcf.gz \
@@ -126,6 +158,9 @@ process mergeVcfFiles() {
     --recode --stdout | bgzip -c > ${params.project}.vcf.gz
 
   tabix ${params.project}.vcf.gz
+
+  vcf-statistics "filtered" ${params.project}.vcf.gz ${params.project}.statistics
+
   """
 
 }
@@ -159,15 +194,17 @@ process createReport {
 
   input:
     file stats from merged_vcf_statistics.collect()
+    file stats2 from merged_vcf_statistics2.collect()
     file samples_runs from samples_runs_ch.collect()
     file snps_runs from snps_runs_ch.collect()
+    file filter_statistics from filter_statistics_ch.collect()
     file pre_imputation_report
 
   output:
     file "*.html" into report_ch
 
   """
-  Rscript -e "require( 'rmarkdown' ); render('${pre_imputation_report}', params = list(project = '${params.project}', chip = '${params.chip}', samples = '${samples_runs}', snps = '${snps_runs}', samples_excluded = '${params.project}.qc.samples.excluded', samples_merged = '${params.project}.qc.samples'), knit_root_dir='\$PWD', output_file='\$PWD/pre-imputation-report.html')"
+  Rscript -e "require( 'rmarkdown' ); render('${pre_imputation_report}', params = list(project = '${params.project}', chip = '${params.chip}', samples = '${samples_runs}', snps = '${snps_runs}', filter_statistics = '${filter_statistics}', samples_excluded = '${params.project}.qc.samples.excluded', samples_merged = '${params.project}.qc.samples'), knit_root_dir='\$PWD', output_file='\$PWD/pre-imputation-report.html')"
   """
 
 }

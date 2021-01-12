@@ -1,0 +1,13 @@
+#!/bin/sh
+name=$1
+input=$2
+output=$3
+temp_prefix=TEMP_FILE_XX72262628_
+
+BASEDIR=$(dirname "$0")
+
+plink2 --bfile ${input} --recode vcf --out ${temp_prefix}
+jbang $BASEDIR/VcfStatistics.java --name ${name} --input ${temp_prefix}.vcf --output ${output}
+
+#Now delete any temporary artefacts produced
+rm -f $temp_prefix*

@@ -10,6 +10,7 @@ dependencies:
   - vcftools=0.1.16
   - htslib=1.11
   - plink=1.90b6.18
+  - plink2=1.90b3.35
   - java-jdk=8.0.112
   - unzip=6.0
   - r=4.0
