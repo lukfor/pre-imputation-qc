@@ -45,59 +45,53 @@ process filterAndFixStrandFlips {
     file "*.statistics" into filter_statistics_ch
 
   """
-  # Step 1: replace all spaces with underscore (e.g. spaces in Sample IDs)
-  sed -e 's/ /_/g' ${filename}.ped > ${filename}.step01.ped
-  cp ${filename}.map ${filename}.step01.map
+  # Step 0: replace all spaces with underscore (e.g. spaces in Sample IDs)
+  sed -e 's/ /_/g' ${filename}.ped > ${filename}.step00.ped
+  cp ${filename}.map ${filename}.step00.map
 
-  # TODO: count all lines in map file
+  # count all lines in map file and ped file as write as step0 to .statistics
+  total_samples=\$(cat ${filename}.step00.ped | wc -l)
+  total_snps=\$(cat ${filename}.step00.map | wc -l)
+  printf "name samples snps\n" > ${filename}.statistics
+  printf "step00 \${total_samples} \${total_snps}" >> ${filename}.statistics
+
+  # Step 1: Remove all indels, "I" and "D"
+  plink --file ${filename}.step00 \
+    --snps-only just-acgt \
+    --make-bed \
+    --out ${filename}.step01
+
+  plink-statistics "step01" ${filename}.step01 ${filename}.statistics
 
 
-  # Step 2: Remove all indels, "I" and "D"
-
-  # Write list of all indel calls (D/I allele codes)
-  plink --file ${filename}.step01 --list-23-indels --out ${filename}.step01
-  plink --file ${filename}.step01 \
-    --exclude ${filename}.step01.indel \
+  # Step 2: Remove all non-autosomale SNPs
+  plink --bfile ${filename}.step01 \
+    --chr 1-22 \
     --make-bed \
     --out ${filename}.step02
 
-
-  #plink --file ${filename}.step01 \
-#    --snps-only just-acgt \
-    #--make-bed \
-    #--out ${filename}.step02
-
-  plink-statistics "step02_remove_all_indels" ${filename}.step02 ${filename}.statistics
+  plink-statistics "step02" ${filename}.step02 ${filename}.statistics
 
 
-  # Step 3: Remove all non-autosomale SNPs
-  plink --bfile ${filename}.step02 \
-    --chr 1-22 \
-    --make-bed \
-    --out ${filename}.step03
-
-  plink-statistics "step03_remove_non_autosomale" ${filename}.step03 ${filename}.statistics
-
-
-  # Step 4: Update strand flips (https://www.well.ox.ac.uk/~wrayner/strand/update_build.sh)
+  # Step 3: Update strand flips (https://www.well.ox.ac.uk/~wrayner/strand/update_build.sh)
   update_build.sh \
-    ${filename}.step03 \
+    ${filename}.step02 \
     ${strand_file} \
-    ${filename}.step04
+    ${filename}.step03
 
-  plink-statistics "step04_update_strand_flips" ${filename}.step04 ${filename}.statistics
+  plink-statistics "step03" ${filename}.step03 ${filename}.statistics
 
-  # Step 5: Remvoe all autosomale snps after update strand flips
-  plink --bfile ${filename}.step04 \
+  # Step 4: Remove all autosomale snps after update strand flips
+  plink --bfile ${filename}.step03 \
     --chr 1-22 \
     --make-bed \
-    --out ${filename}.step05
+    --out ${filename}.step04
 
-    plink-statistics "step05_remove_non_autosomale" ${filename}.step05 ${filename}.statistics
+    plink-statistics "step04" ${filename}.step04 ${filename}.statistics
 
 
-  # Step 6: Harmonize ref/alt alleles and retain only SNPs in the refalt file.
-  plink --bfile ${filename}.step05 \
+  # Step 5: Harmonize ref/alt alleles and retain only SNPs in the refalt file.
+  plink --bfile ${filename}.step04 \
     --extract ${refalt_file} \
     --reference-allele ${refalt_file} \
     --recode vcf \
@@ -106,7 +100,7 @@ process filterAndFixStrandFlips {
   bgzip ${filename}.vcf
   tabix ${filename}.vcf.gz
 
-  vcf-statistics "step06_harmonize_ref_alt_alleles" ${filename}.vcf.gz ${filename}.statistics
+  vcf-statistics "step05" ${filename}.vcf.gz ${filename}.statistics
 
 
   # Calculate snp call rate and sample call rate (per run)
@@ -129,42 +123,60 @@ process mergeVcfFiles() {
     file vcf_files_index from vcf_files_index_ch.collect()
 
   output:
-    file "${params.project}.vcf.gz" into merged_vcf_file_ch
-    file "${params.project}.vcf.gz.tbi" into merged_vcf_file_index_ch
-    file "${params.project}.qc.*" into merged_vcf_statistics
-    file "${params.project}.statistics" into merged_vcf_statistics2
+    file "${params.project}.merged.vcf.gz" into merged_vcf_file_ch
+    file "${params.project}.merged.vcf.gz.tbi" into merged_vcf_file_index_ch
+    file "${params.project}.merged.statistics" into merged_vcf_file_statistics
 
   """
+
   # TODO: check length of vc_files. if only one element, no merge needed, copy only.
 
   # TODO: -m id still needed with extract? use -O z to avoid bgzip.
-  bcftools merge -m id ${vcf_files} -O v > ${params.project}.unfiltered.vcf
-  bgzip ${params.project}.unfiltered.vcf
-  tabix ${params.project}.unfiltered.vcf.gz
+  bcftools merge -m id ${vcf_files} -O v > ${params.project}.merged.vcf
+  bgzip ${params.project}.merged.vcf
+  tabix ${params.project}.merged.vcf.gz
 
-  vcf-statistics "unfiltered" ${params.project}.unfiltered.vcf.gz ${params.project}.statistics
+  vcf-statistics "merged" ${params.project}.merged.vcf.gz ${params.project}.merged.statistics
+
+  """
+
+}
+
+process filterMergedVcf() {
+
+  publishDir "$params.output", mode: 'copy'
+
+  input:
+    file merged_vcf_file from merged_vcf_file_ch.collect()
+    file merged_vcf_file_index from merged_vcf_file_index_ch.collect()
+
+  output:
+    file "${params.project}.vcf.gz" into final_vcf_file_ch
+    file "${params.project}.vcf.gz.tbi" into final_vcf_file_index_ch
+    file "${params.project}.qc.*" into final_vcf_file_statistics
+
+  """
 
   # Calculate snp call rate and sample call rate
-  jbang ${VcfQualityControl} ${params.project}.unfiltered.vcf.gz \
+  jbang ${VcfQualityControl} ${merged_vcf_file} \
     --minSnpCallRate ${params.minSnpCallRate}  \
     --minSampleCallRate ${params.minSampleCallRate}  \
     --chunkSize ${params.chunkSize} \
     --output ${params.project}.qc
 
   # Filter by snp call rate and by sample call rate
-  vcftools --gzvcf ${params.project}.unfiltered.vcf.gz  \
+  vcftools --gzvcf ${merged_vcf_file}  \
     --exclude ${params.project}.qc.snps.excluded  \
     --remove ${params.project}.qc.samples.excluded  \
     --recode --stdout | bgzip -c > ${params.project}.vcf.gz
 
   tabix ${params.project}.vcf.gz
 
-  vcf-statistics "filtered" ${params.project}.vcf.gz ${params.project}.statistics
+  vcf-statistics "final" ${params.project}.vcf.gz ${params.project}.statistics
 
   """
 
 }
-
 
 process splitIntoChromosomes {
 
@@ -172,8 +184,8 @@ process splitIntoChromosomes {
 
   input:
     val chromosome from chromosomes_ch
-    file vcf_file from merged_vcf_file_ch.collect()
-    file vcf_file_index_index from merged_vcf_file_index_ch.collect()
+    file vcf_file from final_vcf_file_ch.collect()
+    file vcf_file_index_index from final_vcf_file_index_ch.collect()
 
   output:
     file "${params.project}.chr*.vcf.gz" into chr_vcf_file_ch
@@ -193,8 +205,8 @@ process createReport {
   publishDir "$params.output", mode: 'copy'
 
   input:
-    file stats from merged_vcf_statistics.collect()
-    file stats2 from merged_vcf_statistics2.collect()
+    file stats from merged_vcf_file_statistics.collect()
+    file stats2 from final_vcf_file_statistics.collect()
     file samples_runs from samples_runs_ch.collect()
     file snps_runs from snps_runs_ch.collect()
     file filter_statistics from filter_statistics_ch.collect()

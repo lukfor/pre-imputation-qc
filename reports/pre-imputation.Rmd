@@ -1,6 +1,13 @@
 ---
 title: "Pre-Imputation-QC"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+  toc_depth: 3
+  number_sections: true
+  theme: lumen
 params:
   project: test-gwas-test
   chip: test-chip
@@ -18,8 +25,6 @@ options(warn = -1)
 library(ggplot2)
 library(DT)
 library(dplyr)
-htmltools::tagList(datatable(cars))
-
 ```
 
 
@@ -43,7 +48,9 @@ if (!file.size(params$samples_excluded) == 0) {
 | Samples       | `r samples_count - excluded_samples_count` samples |
 | SNPs          | TODO                                               |
 
-## Excluded Samples
+## Samples
+
+### Excluded
 
 <div class="alert alert-info">
 **`r excluded_samples_count`** samples excluded due to low call rate.
@@ -55,13 +62,13 @@ if (excluded_samples_count > 0) {
 }
 ```
 
-## All Samples
+### Call Rate
 
 ```{r, echo=FALSE}
-ggplot(samples, aes(x=call_rate)) + geom_histogram(binwidth = 0.05)
+(ggplot(samples, aes(x=call_rate)) + geom_histogram(binwidth = 0.05))
 ```
 
-## Runs
+## Quality Control Steps
 
 TODO:
 
@@ -69,15 +76,101 @@ TODO:
 - SNPs per run
 - avg Sample call rate
 
-### SNPs after each step
-
-```{r filters, results='asis'}
+```{r, echo=FALSE}
 filenames <- unlist(strsplit(params$filter_statistics, " "))
-for (filename in filenames){
-  statistics <- read.csv(filename, sep="")
-  print(htmltools::tagList((datatable(statistics))))
+# TODO: load step 0 file (create it in pipeline!)
+steps <-  read.csv(filenames[1],  sep="")
+steps$run = filenames[1]
+for (filename in filenames[-1]){
+  step <- read.csv(filename, sep="")
+  step$run = filename
+  steps <- rbind(steps,step)
 }
+
+
+ggplot(steps, aes(x=name, y=snps)) +
+  geom_bar(stat="identity") +
+  facet_grid(. ~ run, ) +
+  xlab("Steps") +
+  ylab("Remaining Variants") +
+  ggtitle("QC Filters - Summary")
+
 ```
+
+### Raw Data
+
+Excludes all variants with one or more multi-character allele codes. Variants with single-character allele codes outside of {'A', 'C', 'G', 'T', 'a', 'c', 'g', 't', <missing code>} are also excluded (e.g. indels coded as I or D).
+
+```{r, echo=FALSE}
+step00 = steps[steps$name == "step00", ]
+datatable(step00)
+```
+
+### Step 1: Excluding all indels
+
+Excludes all variants with one or more multi-character allele codes. Variants with single-character allele codes outside of {'A', 'C', 'G', 'T', 'a', 'c', 'g', 't', <missing code>} are also excluded (e.g. indels coded as I or D).
+
+```{r, echo=FALSE}
+step01 = steps[steps$name == "step01", ]
+step01$filtered_snps = step00$snps - step01$snps
+datatable(step01)
+```
+
+
+
+### Step 2: Excluding all non-autosomale SNPs
+
+Excludes all variants not listed as autosomal-chromosomes (1-22).
+
+```{r, echo=FALSE}
+step02 = steps[steps$name == "step02", ]
+step02$filtered_snps = step01$snps - step02$snps
+datatable(step02)
+```
+
+### Step 3: Updating strand flips
+
+Updates the chromosome, position and strand of binary ped files using strand files from https://www.well.ox.ac.uk/~wrayner/strand/.
+
+The strand files contain all the variants where the match to the relevant genomic sequence >90%. The strand file contains six columns, SNP id, chromosome, position, %match to genome, strand and TOP alleles. 
+
+The strand files assume that your genotype calling algorithm has exported the allele calls aligned to the **Illumina TOP strand**.
+
+```{r, echo=FALSE}
+step03 = steps[steps$name == "step03", ]
+step03$filtered_snps = step02$snps - step03$snps
+datatable(step03)
+```
+
+TODO: add some validation to check if TOP strand was selected on export.
+
+### Step 4: Excluding all non-autosomale snps (after update strand flips)
+
+Excludes all variants not listed as autosomal-chromosomes (1-22). 
+
+```{r, echo=FALSE}
+step04 = steps[steps$name == "step04", ]
+step04$filtered_snps = step03$snps - step04$snps
+datatable(step04)
+```
+
+### Step 5: Harmonizing ref/alt alleles and retain only SNPs with known ref-allele
+
+Updates the ref- and alt-allele based on ref-alt files from https://www.well.ox.ac.uk/~wrayner/strand/RefAlt.html. Excludes all SNPs where no ref-allele is known.
+
+```{r, echo=FALSE}
+step05 = steps[steps$name == "step05", ]
+step05$filtered_snps = step04$snps - step05$snps
+datatable(step05)
+```
+
+### Step 6: Merging all single runs into one dataset
+
+### Step 7: Excluding SNPs with low call rate
+
+### Step 8: Excluding samples with low call rate
+
+## Runs
 
 ### Sample Call Rate
 
