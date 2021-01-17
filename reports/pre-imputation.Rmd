@@ -1,6 +1,6 @@
 ---
 title: "Pre-Imputation-QC"
-output: 
+output:
   html_document:
     toc: true
     toc_float: true
@@ -58,8 +58,6 @@ if (!file.size(params$snps_excluded) == 0) {
 | Chip          | `r params$chip`                            |
 | Samples       | `r samples_count - excluded_samples_count` (`r excluded_samples_count` excluded) |
 | SNPs          | `r snps_count - excluded_snps_count`                                            |
-
-### Call Rate
 
 ## Quality Control Steps
 
@@ -127,7 +125,7 @@ datatable(step02)
 
 Updates the chromosome, position and strand of binary ped files using strand files from https://www.well.ox.ac.uk/~wrayner/strand/.
 
-The strand files contain all the variants where the match to the relevant genomic sequence >90%. The strand file contains six columns, SNP id, chromosome, position, %match to genome, strand and TOP alleles. 
+The strand files contain all the variants where the match to the relevant genomic sequence >90%. The strand file contains six columns, SNP id, chromosome, position, %match to genome, strand and TOP alleles.
 
 The strand files assume that your genotype calling algorithm has exported the allele calls aligned to the **Illumina TOP strand**.
 
@@ -139,7 +137,7 @@ TODO: add some validation to check if TOP strand was selected on export.
 
 ### Step 4: Excluding all non-autosomale snps (after update strand flips)
 
-Excludes all variants not listed as autosomal-chromosomes (1-22). 
+Excludes all variants not listed as autosomal-chromosomes (1-22).
 
 ```{r, echo=FALSE}
 datatable(step04)
