@@ -216,7 +216,7 @@ process createReport {
     file "*.html" into report_ch
 
   """
-  Rscript -e "require( 'rmarkdown' ); render('${pre_imputation_report}', params = list(project = '${params.project}', chip = '${params.chip}', samples = '${samples_runs}', snps = '${snps_runs}', filter_statistics = '${filter_statistics}', samples_excluded = '${params.project}.qc.samples.excluded', samples_merged = '${params.project}.qc.samples'), knit_root_dir='\$PWD', output_file='\$PWD/pre-imputation-report.html')"
+  Rscript -e "require( 'rmarkdown' ); render('${pre_imputation_report}', params = list(project = '${params.project}', chip = '${params.chip}', samples = '${samples_runs}', snps = '${snps_runs}', filter_statistics = '${filter_statistics}', samples_excluded = '${params.project}.qc.samples.excluded', snps_excluded = '${params.project}.qc.snps.excluded', samples_final = '${params.project}.qc.samples', snps_final = '${params.project}.qc.snps', samples_merged = '${params.project}.merged.statistics'), knit_root_dir='\$PWD', output_file='\$PWD/pre-imputation-report.html')"
   """
 
 }
