@@ -93,7 +93,7 @@ process filterAndFixStrandFlips {
   # Step 5: Harmonize ref/alt alleles and retain only SNPs in the refalt file.
   plink --bfile ${filename}.step04 \
     --extract ${refalt_file} \
-    --reference-allele ${refalt_file} \
+    --a2-allele ${refalt_file} \
     --recode vcf \
     --out ${filename}
 
