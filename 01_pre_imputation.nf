@@ -1,6 +1,6 @@
 params.project = "test-gwas"
 params.input = "tests/input/*/*.{map,ped}"
-params.output = "tests/output"
+params.output = "tests/output/"
 params.chip = "GSAMD-24v3-0-EA_20034606_A1.b37"
 
 params.chunkSize= 20000000
@@ -10,10 +10,12 @@ params.minSnpCallRate = 0.9
 params.strand_file = "$baseDir/data/${params.chip}.strand"
 params.refalt_file = "$baseDir/data/${params.chip}.RefAlt"
 
+params.stepInput = "${params.input}"
+params.stepOutput = "${params.output}/01_pre_imputation"
 
 VcfQualityControl = "$baseDir/bin/VcfQualityControl.java"
 VcfStatistics = "$baseDir/bin/VcfStatistics.java"
-pre_imputation_report = file("$baseDir/reports/pre-imputation.Rmd")
+pre_imputation_report = file("$baseDir/reports/01_pre_imputation.Rmd")
 
 if (!params.input) {
     exit 1, "Plink files not specified"
@@ -22,7 +24,7 @@ if (!params.input) {
 // TODO: check strand/refalt file
 
 // load all plink files from input folder
-Channel.fromFilePairs("${params.input}").set {plink_files_ch}
+Channel.fromFilePairs("${params.stepInput}").set {plink_files_ch}
 strand_file_ch = file(params.strand_file)
 refalt_file_ch = file(params.refalt_file)
 chromosomes_ch = Channel.of(1..22)
@@ -30,7 +32,7 @@ chromosomes_ch = Channel.of(1..22)
 
 process filterAndFixStrandFlips {
 
-  publishDir "$params.output/single", mode: 'copy'
+  publishDir "$params.stepOutput/single", mode: 'copy'
 
   input:
     set filename, file(map_file) from plink_files_ch
@@ -116,7 +118,7 @@ process filterAndFixStrandFlips {
 
 process mergeVcfFiles() {
 
-  publishDir "$params.output", mode: 'copy'
+  publishDir "$params.stepOutput", mode: 'copy'
 
   input:
     file vcf_files from vcf_files_ch.collect()
@@ -144,7 +146,7 @@ process mergeVcfFiles() {
 
 process filterMergedVcf() {
 
-  publishDir "$params.output", mode: 'copy'
+  publishDir "$params.stepOutput", mode: 'copy'
 
   input:
     file merged_vcf_file from merged_vcf_file_ch.collect()
@@ -180,7 +182,7 @@ process filterMergedVcf() {
 
 process splitIntoChromosomes {
 
-  publishDir "$params.output", mode: 'copy'
+  publishDir "$params.stepOutput", mode: 'copy'
 
   input:
     val chromosome from chromosomes_ch
@@ -216,7 +218,19 @@ process createReport {
     file "*.html" into report_ch
 
   """
-  Rscript -e "require( 'rmarkdown' ); render('${pre_imputation_report}', params = list(project = '${params.project}', chip = '${params.chip}', samples = '${samples_runs}', snps = '${snps_runs}', filter_statistics = '${filter_statistics}', samples_excluded = '${params.project}.qc.samples.excluded', snps_excluded = '${params.project}.qc.snps.excluded', samples_final = '${params.project}.qc.samples', snps_final = '${params.project}.qc.snps', samples_merged = '${params.project}.merged.statistics'), knit_root_dir='\$PWD', output_file='\$PWD/pre-imputation-report.html')"
+  Rscript -e "require( 'rmarkdown' ); render('${pre_imputation_report}',
+    params = list(
+      project = '${params.project}',
+      chip = '${params.chip}',
+      samples = '${samples_runs}',
+      snps = '${snps_runs}',
+      filter_statistics = '${filter_statistics}',
+      samples_excluded = '${params.project}.qc.samples.excluded',
+      snps_excluded = '${params.project}.qc.snps.excluded',
+      samples_final = '${params.project}.qc.samples',
+      snps_final = '${params.project}.qc.snps',
+      samples_merged = '${params.project}.merged.statistics'
+    ), knit_root_dir='\$PWD', output_file='\$PWD/01_pre_imputation.html')"
   """
 
 }

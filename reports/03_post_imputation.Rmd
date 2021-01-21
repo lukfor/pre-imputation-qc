@@ -1,0 +1,68 @@
+---
+title: "3 Post-Imputation"
+output: html_document
+params:
+  project: test-gwas-test
+  chip: test-chip
+  reference_pc:  ../tests/output/02_imputation/reference_pc.txt
+  reference_pc_var: ../tests/output/02_imputation/reference_pc_var.txt
+  reference_samples: ../data/hgdp.txt
+  study_pc: ../tests/output/02_imputation/study_pc.txt
+  study_outliers: ../tests/output/03_post_imputation/test-gwas-test.outliers.txt
+  reference_cluster: ../tests/output/03_post_imputation/test-gwas-test.clusters.txt
+  pca_reference_population: Europe
+  pca_max_pc: 3
+  pca_max_sd: 6
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(DT)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## PCA
+
+Principle Components Analysis is performed on the genotyped data.
+
+```{r warning=FALSE}
+reference_pc <- read.csv(params$reference_pc, sep = '\t')
+reference <- read.csv(params$reference_samples, sep = '\t')
+reference <- merge(x = reference, y = reference_pc, by.x = 'indivID', by.y = 'indivID')
+
+study_pc <- read.csv(params$study_pc, sep = '\t')
+study_pc$label <- params$project
+
+ggplot() +
+  geom_point(data=reference, aes(x=PC1, y=PC2, color=reference$superpopID), alpha=0.6) +
+  geom_point(data=study_pc, aes(x=PC1, y=PC2, size=label), shape=17, color='black') +
+  labs(color = 'Population', size="Study")
+```
+
+Reference Data: HGDP (https://www.internationalgenome.org/)
+
+## Clusters
+
+- Used components: **`r params$pca_max_pc`**
+- Standard deviations in all of these components: **`r params$pca_max_sd`**
+
+
+```{r warning=FALSE}
+reference_cluster <- read.csv(params$reference_cluster, sep = '\t')
+
+datatable(reference_cluster)
+
+ggplot() +
+  geom_rect(data=reference_cluster, mapping=aes(xmin=PC1_min, xmax=PC1_max, ymin=PC2_min, ymax=PC2_max, fill=superpopID), color="black", alpha=0.5) +
+  geom_point(data=study_pc, aes(x=PC1, y=PC2, size=label), shape=17, color='black') +
+  labs(color = 'Population', size="Study")
+```
+
+## Outliers
+
+- Reference Population: **`r params$pca_reference_population`**
+
+```{r warning=FALSE}
+study_outliers <- read.csv(params$study_outliers, sep = '\t')
+datatable(study_outliers)
+```
