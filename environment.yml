@@ -19,6 +19,7 @@ dependencies:
   - r-dplyr=1.0.2
   - r-dt=0.17
   - r-htmltools
+  - r-rmdformats=1.0.1
   - pandoc=2.11.3
   - cairo
   - xorg-libxt

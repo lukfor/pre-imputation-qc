@@ -1,24 +1,23 @@
 ---
 title: "1 Pre-Imputation"
 output:
-  html_document:
-    toc: true
-    toc_float: true
-    toc_collapsed: true
-  toc_depth: 3
-  number_sections: true
-  theme: lumen
+  rmdformats::robobook:
+    self_contained: true
+    thumbnails: false
+    lightbox: true
+    gallery: false
+    highlight: tango
 params:
   project: test-gwas-test
   chip: test-chip
-  samples: ../tests/output/single/29sep20_GSA_PLINK.qc.samples ../tests/output/single/31aug20_GSA_PLINK.qc.samples
-  snps: ../tests/output/single/29sep20_GSA_PLINK.qc.snps ../tests/output/single/31aug20_GSA_PLINK.qc.snps
-  snps_final: ../tests/output/test-gwas.qc.snps
-  samples_merged: ../tests/output/test-gwas.merged.statistics
-  samples_final: ../tests/output/test-gwas.qc.samples
-  samples_excluded: ../tests/output/test-gwas.qc.samples.excluded
-  snps_excluded: ../tests/output/test-gwas.qc.snps.excluded
-  filter_statistics: ../tests/output/single/29sep20_GSA_PLINK.statistics ../tests/output/single/31aug20_GSA_PLINK.statistics
+  samples: ../tests/output/01_pre_imputation/single/29sep20_GSA_PLINK.qc.samples ../tests/output/01_pre_imputation/single/31aug20_GSA_PLINK.qc.samples
+  snps: ../tests/output/01_pre_imputation/single/29sep20_GSA_PLINK.qc.snps ../tests/output/01_pre_imputation/single/31aug20_GSA_PLINK.qc.snps
+  snps_final: ../tests/output/01_pre_imputation/test-gwas.qc.snps
+  samples_merged: ../tests/output/01_pre_imputation/test-gwas.merged.statistics
+  samples_final: ../tests/output/01_pre_imputation/test-gwas.qc.samples
+  samples_excluded: ../tests/output/01_pre_imputation/test-gwas.qc.samples.excluded
+  snps_excluded: ../tests/output/01_pre_imputation/test-gwas.qc.snps.excluded
+  filter_statistics: ../tests/output/01_pre_imputation/single/29sep20_GSA_PLINK.statistics ../tests/output/01_pre_imputation/single/31aug20_GSA_PLINK.statistics
 ---
 
 ```{r setup, include=FALSE}
@@ -50,7 +49,7 @@ if (!file.size(params$snps_excluded) == 0) {
 }
 ```
 
-## Summary
+# Summary
 
 | Parameter     | Value                                      |
 | ------------- |--------------------------------------------|
@@ -59,7 +58,7 @@ if (!file.size(params$snps_excluded) == 0) {
 | Samples       | `r samples_count - excluded_samples_count` (`r excluded_samples_count` excluded) |
 | SNPs          | `r snps_count - excluded_snps_count`                                            |
 
-## Quality Control Steps
+# Quality Control Steps
 
 ```{r, echo=FALSE}
 filenames <- unlist(strsplit(params$filter_statistics, " "))
@@ -97,13 +96,13 @@ step05$filtered_snps = step04$snps - step05$snps
 | Number of Runs       | `r length(filenames)`                            |
 | SNPs per Run          | `r mean(step00$snps)` +/- `r sd(step00$snps)`                           |
 
-### Raw Data
+## Raw Data
 
 ```{r, echo=FALSE}
 datatable(step00)
 ```
 
-### Step 1: Excluding all indels
+## Step 1: Excluding all indels
 
 Excludes all variants with one or more multi-character allele codes. Variants with single-character allele codes outside of {'A', 'C', 'G', 'T', 'a', 'c', 'g', 't', <missing code>} are also excluded (e.g. indels coded as I or D).
 
@@ -113,7 +112,7 @@ datatable(step01)
 
 
 
-### Step 2: Excluding all non-autosomale SNPs
+## Step 2: Excluding all non-autosomale SNPs
 
 Excludes all variants not listed as autosomal-chromosomes (1-22).
 
@@ -121,7 +120,7 @@ Excludes all variants not listed as autosomal-chromosomes (1-22).
 datatable(step02)
 ```
 
-### Step 3: Updating strand flips
+## Step 3: Updating strand flips
 
 Updates the chromosome, position and strand of binary ped files using strand files from https://www.well.ox.ac.uk/~wrayner/strand/.
 
@@ -135,7 +134,7 @@ datatable(step03)
 
 TODO: add some validation to check if TOP strand was selected on export.
 
-### Step 4: Excluding all non-autosomale snps (after update strand flips)
+## Step 4: Excluding all non-autosomale snps (after update strand flips)
 
 Excludes all variants not listed as autosomal-chromosomes (1-22).
 
@@ -143,7 +142,7 @@ Excludes all variants not listed as autosomal-chromosomes (1-22).
 datatable(step04)
 ```
 
-### Step 5: Harmonizing ref/alt alleles and retain only SNPs with known ref-allele
+## Step 5: Harmonizing ref/alt alleles and retain only SNPs with known ref-allele
 
 Updates the ref- and alt-allele based on ref-alt files from https://www.well.ox.ac.uk/~wrayner/strand/RefAlt.html. Excludes all SNPs where no ref-allele is known.
 
@@ -151,19 +150,19 @@ Updates the ref- and alt-allele based on ref-alt files from https://www.well.ox.
 datatable(step05)
 ```
 
-### Step 6: Merging all single runs into one dataset
+## Step 6: Merging all single runs into one dataset
 
 ```{r, echo=FALSE}
 step06 <-  read.csv(params$samples_merged,  sep="")
 datatable(step06)
 ```
 
-### Step 7: Excluding SNPs with low call rate
+## Step 7: Excluding SNPs with low call rate
 
 **`r excluded_snps_count`** snps excluded due to low call rate (Call rate < 0.9).
 
 
-### Step 8: Excluding samples with low call rate
+## Step 8: Excluding samples with low call rate
 
 **`r excluded_samples_count`** samples excluded due to low call rate (Overall call rate < 0.5 or at least one 20MB chunk with call rate < 0.5).
 
@@ -173,35 +172,35 @@ if (excluded_samples_count > 0) {
 }
 ```
 
-## Runs
+# Runs
 
-TODO: group by run
-
-### Sample Call Rate
-
-```{r samples, echo=FALSE}
-filenames <- unlist(strsplit(params$samples, " "))
-for (filename in filenames){
-  samples <- read.csv(filename, sep="")
+```{r samples, echo=FALSE, results="asis"}
+filenames_samples <- unlist(strsplit(params$samples, " "))
+filenames_snps <- unlist(strsplit(params$snps, " "))
+for (i in 1:length(filenames)){
+  filename_samples <- filenames_samples[i]
+  filename_snp <- filenames_snps[i]
+  
+  samples <- read.csv(filename_samples, sep="")
+  cat("\n")
+  cat("<h2>", filename, "</h2>")
+  cat("\n")
   print(
     ggplot(samples, aes(x=chunk, y=sample)) +
       geom_tile(aes(fill=call_rate)) +
-      scale_fill_gradient(low = "red", high = "white",limits=c(0,1)) +
-      ggtitle(filename)
+      scale_fill_gradient(limits=c(0,1)) +
+      theme(axis.text.y = element_text(size = 6), axis.text.x=element_blank(), axis.ticks.x=element_blank()) +
+      xlab("Chunks") + 
+      ylab("Samples") + 
+      ggtitle("Sample Call Rate") 
     )
-}
-```
-
-### SNP Call Rate
-
-```{r snps, echo=FALSE}
-filenames <- unlist(strsplit(params$snps, " "))
-for (filename in filenames){
-  snps <- read.csv(filename, sep="")
+  snps <- read.csv(filename_snp, sep="")
   print(
     ggplot(snps, aes(x=call_rate)) +
       geom_histogram(binwidth = 0.05) +
-      ggtitle(filename)
-    )
+      xlab("Call Rate") + 
+      ylab("#SNPs") + 
+      ggtitle("SNP Call Rate") 
+    )  
 }
 ```

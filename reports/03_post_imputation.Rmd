@@ -1,6 +1,13 @@
 ---
 title: "3 Post-Imputation"
-output: html_document
+date: "`r Sys.Date()`"
+output:
+  rmdformats::robobook:
+    self_contained: true
+    thumbnails: false
+    lightbox: true
+    gallery: false
+    highlight: tango
 params:
   project: test-gwas-test
   chip: test-chip
@@ -21,7 +28,7 @@ library(DT)
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-## Principle Components Analysis
+# Principle Components Analysis
 
 Principle Components Analysis is performed on the genotyped data.
 
@@ -41,7 +48,7 @@ ggplot() +
 
 Reference Data: HGDP (https://www.internationalgenome.org/)
 
-### Clusters
+## Clusters
 
 - Used components: **`r params$pca_max_pc`**
 - Standard deviations in all of these components: **`r params$pca_max_sd`**
@@ -58,7 +65,7 @@ ggplot() +
   labs(fill = 'Population', size="Study")
 ```
 
-### Outliers
+## Outliers
 
 - Reference Population: **`r params$pca_reference_population`**
 
