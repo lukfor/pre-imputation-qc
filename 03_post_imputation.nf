@@ -15,23 +15,19 @@ FilterPCA = "$baseDir/bin/FilterPCA.java"
 
 // load all laser files
 laser_files_ch = Channel.fromPath("${params.stepInput}/*.txt")
+laser_files2_ch = Channel.fromPath("${params.stepInput}/*.txt")
 pca_reference_samples_ch = file(params.pca_reference_samples)
 
+process detectOutliers {
 
-//TODO: filter out outliners
-
-///TODO: calculate scores
-
-process createReport {
-
-  publishDir "$params.output", mode: 'copy'
+  publishDir "$params.stepOutput", mode: 'copy'
 
   input:
     file laser_files from laser_files_ch.collect()
     file pca_reference_samples from pca_reference_samples_ch
 
   output:
-    file "*.html" into report_ch
+    file "${params.project}*.txt" into outlier_files_ch
 
   """
   # Calculate pca clusters
@@ -43,7 +39,23 @@ process createReport {
     --max-sd ${params.pca_max_sd} \
     --study-pc study_pc.txt \
     --output ${params.project}
+  """
 
+}
+
+process createReport {
+
+  publishDir "$params.output", mode: 'copy'
+
+  input:
+    file laser_files from laser_files2_ch.collect()
+    file outlier_files from outlier_files_ch.collect()
+    file pca_reference_samples from pca_reference_samples_ch
+
+  output:
+    file "*.html" into report_ch
+
+  """
   Rscript -e "require( 'rmarkdown' ); render('${post_imputation_report}',
    params = list(
      project = '${params.project}',

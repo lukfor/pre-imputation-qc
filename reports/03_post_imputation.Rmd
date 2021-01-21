@@ -8,8 +8,8 @@ params:
   reference_pc_var: ../tests/output/02_imputation/reference_pc_var.txt
   reference_samples: ../data/hgdp.txt
   study_pc: ../tests/output/02_imputation/study_pc.txt
-  study_outliers: ../tests/output/03_post_imputation/test-gwas-test.outliers.txt
-  reference_cluster: ../tests/output/03_post_imputation/test-gwas-test.clusters.txt
+  study_outliers: ../tests/output/03_post_imputation/test-gwas.outliers.txt
+  reference_cluster: ../tests/output/03_post_imputation/test-gwas.clusters.txt
   pca_reference_population: Europe
   pca_max_pc: 3
   pca_max_sd: 6
@@ -21,7 +21,7 @@ library(DT)
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-## PCA
+## Principle Components Analysis
 
 Principle Components Analysis is performed on the genotyped data.
 
@@ -41,7 +41,7 @@ ggplot() +
 
 Reference Data: HGDP (https://www.internationalgenome.org/)
 
-## Clusters
+### Clusters
 
 - Used components: **`r params$pca_max_pc`**
 - Standard deviations in all of these components: **`r params$pca_max_sd`**
@@ -55,10 +55,10 @@ datatable(reference_cluster)
 ggplot() +
   geom_rect(data=reference_cluster, mapping=aes(xmin=PC1_min, xmax=PC1_max, ymin=PC2_min, ymax=PC2_max, fill=superpopID), color="black", alpha=0.5) +
   geom_point(data=study_pc, aes(x=PC1, y=PC2, size=label), shape=17, color='black') +
-  labs(color = 'Population', size="Study")
+  labs(fill = 'Population', size="Study")
 ```
 
-## Outliers
+### Outliers
 
 - Reference Population: **`r params$pca_reference_population`**
 

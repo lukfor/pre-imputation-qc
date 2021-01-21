@@ -138,6 +138,8 @@ process mergeVcfFiles() {
   bgzip ${params.project}.merged.vcf
   tabix ${params.project}.merged.vcf.gz
 
+  # TODO: convert to plink an filter by --maf 0.01 --hwe 1E-6 ?
+
   vcf-statistics "merged" ${params.project}.merged.vcf.gz ${params.project}.merged.statistics
 
   """
