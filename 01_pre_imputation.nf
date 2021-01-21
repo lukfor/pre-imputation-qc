@@ -131,14 +131,16 @@ process mergeVcfFiles() {
 
   """
 
-  # TODO: check length of vc_files. if only one element, no merge needed, copy only.
+  # if contains a spaceh --> multiple files --> merge needed
+  if [[ "${vcf_files}" = *" "* ]]; then
+    # TODO: -m id still needed with extract? use -O z to avoid bgzip.
+    bcftools merge -m id ${vcf_files} -O v > ${params.project}.merged.vcf
+    bgzip ${params.project}.merged.vcf
+  else
+    cp ${vcf_files} ${params.project}.merged.vcf.gz
+  fi
 
-  # TODO: -m id still needed with extract? use -O z to avoid bgzip.
-  bcftools merge -m id ${vcf_files} -O v > ${params.project}.merged.vcf
-  bgzip ${params.project}.merged.vcf
   tabix ${params.project}.merged.vcf.gz
-
-  # TODO: convert to plink an filter by --maf 0.01 --hwe 1E-6 ?
 
   vcf-statistics "merged" ${params.project}.merged.vcf.gz ${params.project}.merged.statistics
 
@@ -175,6 +177,8 @@ process filterMergedVcf() {
     --recode --stdout | bgzip -c > ${params.project}.vcf.gz
 
   tabix ${params.project}.vcf.gz
+
+  # TODO: convert to plink an filter by --maf 0.01 --hwe 1E-6 ?
 
   vcf-statistics "final" ${params.project}.vcf.gz ${params.project}.statistics
 
