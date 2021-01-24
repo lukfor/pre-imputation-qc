@@ -7,9 +7,9 @@ params.pca_max_pc = 3
 params.pca_max_sd = 6
 
 params.stepInput = "${params.output}/02_imputation"
-params.stepOutput = "${params.output}/03_post_imputation"
+params.stepOutput = "${params.output}/04_pca_calculation"
 
-post_imputation_report = file("$baseDir/reports/03_post_imputation.Rmd")
+post_imputation_report = file("$baseDir/reports/04_pca_calculation.Rmd")
 
 FilterPCA = "$baseDir/bin/FilterPCA.java"
 
@@ -69,7 +69,7 @@ process createReport {
      study_outliers = '${params.project}.outliers.txt',
      reference_cluster = '${params.project}.clusters.txt'
    ),
-   knit_root_dir='\$PWD', output_file='\$PWD/03_post_imputation.html')"
+   knit_root_dir='\$PWD', output_file='\$PWD/04_pca_calculation.html')"
   """
 
 }

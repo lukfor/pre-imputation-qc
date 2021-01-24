@@ -1,5 +1,5 @@
 ---
-title: "3 Post-Imputation"
+title: "3 PCA Calculation"
 date: "`r Sys.Date()`"
 output:
   rmdformats::robobook:
@@ -15,8 +15,8 @@ params:
   reference_pc_var: ../tests/output/02_imputation/reference_pc_var.txt
   reference_samples: ../data/hgdp.txt
   study_pc: ../tests/output/02_imputation/study_pc.txt
-  study_outliers: ../tests/output/03_post_imputation/test-gwas.outliers.txt
-  reference_cluster: ../tests/output/03_post_imputation/test-gwas.clusters.txt
+  study_outliers: ../tests/output/03_pca_calculation/test-gwas.outliers.txt
+  reference_cluster: ../tests/output/03_pca_calculation/test-gwas.clusters.txt
   pca_reference_population: Europe
   pca_max_pc: 3
   pca_max_sd: 6

@@ -4,7 +4,7 @@ params.chip = "GSAMD-24v3-0-EA_20034606_A1.b37"
 params.pgs_scores = "PGS000115,PGS000013,PGS000340,PGS000015,PGS000004"
 
 params.stepInput = "${params.output}/02_imputation"
-params.stepOutput = "${params.output}/04_pgs_calculation"
+params.stepOutput = "${params.output}/05_pgs_calculation"
 
 
 imputed_vcf_files_ch = Channel.fromPath("${params.stepInput}/*.dose.vcf.gz")
@@ -48,7 +48,7 @@ process createReport {
     file "*.html" into final_report_ch
 
   """
-  cp ${report} 04_pgs_calculation.html
+  cp ${report} 05_pgs_calculation.html
   """
 
 }
