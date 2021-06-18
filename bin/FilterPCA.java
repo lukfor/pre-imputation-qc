@@ -1,6 +1,6 @@
 
 //usr/bin/env jbang "$0" "$@" ; exit $?
-//REPOS jcenter,bintry-lukfor-maven=https://dl.bintray.com/lukfor/maven
+//REPOS jcenter,jfrog-genepi-maven=https://genepi.jfrog.io/artifactory/maven
 //DEPS info.picocli:picocli:4.5.0
 //DEPS com.github.lukfor:magic-tables:0.3.1
 

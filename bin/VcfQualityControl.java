@@ -14,7 +14,7 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 //usr/bin/env jbang "$0" "$@" ; exit $?
-//REPOS jcenter,bintry-genepi-maven=https://dl.bintray.com/genepi/maven
+//REPOS jcenter,jfrog-genepi-maven=https://genepi.jfrog.io/artifactory/maven
 //DEPS info.picocli:picocli:4.5.0
 //DEPS genepi:genepi-io:1.0.12
 //DEPS com.github.samtools:htsjdk:2.21.3
