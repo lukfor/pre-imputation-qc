@@ -37,6 +37,7 @@ process createReport {
 
   input:
     file quality_file from quality_file_ch.collect()
+    file imputation_quality_report
 
   output:
     file "*.html" into report_ch
@@ -45,6 +46,7 @@ process createReport {
   Rscript -e "require( 'rmarkdown' ); render('${imputation_quality_report}',
    params = list(
      project = '${params.project}',
+     chip = '${params.chip}',
      qualities = '${quality_file}'
    ),
    knit_root_dir='\$PWD', output_file='\$PWD/03_imputation_quality.html')"

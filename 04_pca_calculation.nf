@@ -51,6 +51,7 @@ process createReport {
     file laser_files from laser_files2_ch.collect()
     file outlier_files from outlier_files_ch.collect()
     file pca_reference_samples from pca_reference_samples_ch
+    file post_imputation_report
 
   output:
     file "*.html" into report_ch
