@@ -80,7 +80,7 @@ process filterAndFixStrandFlips {
     ${filename}.step02 \
     ${strand_file} \
     ${filename}.step03
-
+  
   plink-statistics "step03" ${filename}.step03 ${filename}.statistics
 
   # Step 4: Remove all autosomale snps after update strand flips
@@ -97,7 +97,15 @@ process filterAndFixStrandFlips {
     --extract ${refalt_file} \
     --a2-allele ${refalt_file} \
     --recode vcf \
-    --out ${filename}
+    --out ${filename}.harmonized
+
+
+  # remove all variants that have no ref allele inside
+
+  grep  "Warning: Impossible A2 allele assignment for variant *" ${filename}.harmonized.log | awk '{print substr(\$NF,1,length(\$NF)-1)}' > ${filename}.harmonized.snps
+
+  vcftools --vcf ${filename}.harmonized.vcf --exclude ${filename}.harmonized.snps --recode --out ${filename}
+  mv ${filename}.recode.vcf ${filename}.vcf
 
   bgzip ${filename}.vcf
   tabix ${filename}.vcf.gz

@@ -1,5 +1,5 @@
 #!/bin/sh
-
+set -e
 #A script for updating a binary ped file using one of Will's strand files
 #NRR 17th Jan 2012
 
@@ -45,4 +45,3 @@ plink --noweb --allow-no-sex --bfile $temp3 --extract $pos_file --make-bed --out
 
 #Now delete any temporary artefacts produced
 rm -f $temp_prefix*
-
