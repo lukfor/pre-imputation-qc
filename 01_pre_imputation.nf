@@ -49,6 +49,7 @@ process filterAndFixStrandFlips {
   """
   # Step 0: replace all spaces with underscore (e.g. spaces in Sample IDs)
   sed -e 's/ /_/g' ${filename}.ped > ${filename}.step00.ped
+  #cp ${filename}.ped ${filename}.step00.ped
   cp ${filename}.map ${filename}.step00.map
 
   # count all lines in map file and ped file as write as step0 to .statistics
@@ -80,7 +81,7 @@ process filterAndFixStrandFlips {
     ${filename}.step02 \
     ${strand_file} \
     ${filename}.step03
-  
+
   plink-statistics "step03" ${filename}.step03 ${filename}.statistics
 
   # Step 4: Remove all autosomale snps after update strand flips
@@ -93,25 +94,23 @@ process filterAndFixStrandFlips {
 
 
   # Step 5: Harmonize ref/alt alleles and retain only SNPs in the refalt file.
-  plink --bfile ${filename}.step04 \
-    --extract ${refalt_file} \
-    --a2-allele ${refalt_file} \
-    --recode vcf \
-    --out ${filename}.harmonized
-
+   plink --bfile ${filename}.step04 \
+     --extract ${refalt_file} \
+     --a2-allele ${refalt_file} \
+     --recode vcf-iid \
+     --out ${filename}.harmonized
 
   # remove all variants that have no ref allele inside
 
   grep  "Warning: Impossible A2 allele assignment for variant *" ${filename}.harmonized.log | awk '{print substr(\$NF,1,length(\$NF)-1)}' > ${filename}.harmonized.snps
 
-  vcftools --vcf ${filename}.harmonized.vcf --exclude ${filename}.harmonized.snps --recode --out ${filename}
-  mv ${filename}.recode.vcf ${filename}.vcf
+  vcftools --vcf ${filename}.harmonized.vcf \
+    --exclude ${filename}.harmonized.snps \
+    --recode --stdout | bgzip -c > ${filename}.vcf.gz
 
-  bgzip ${filename}.vcf
   tabix ${filename}.vcf.gz
 
   vcf-statistics "step05" ${filename}.vcf.gz ${filename}.statistics
-
 
   # Calculate snp call rate and sample call rate (per run)
   jbang ${VcfQualityControl} ${filename}.vcf.gz \
