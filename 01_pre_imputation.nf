@@ -6,6 +6,8 @@ params.chip = "GSAMD-24v3-0-EA_20034606_A1.b37"
 params.chunkSize= 20000000
 params.minSampleCallRate = 0.5
 params.minSnpCallRate = 0.9
+params.maf = 0
+params.hwe = 1E-6
 
 params.strand_file = "$baseDir/data/${params.chip}.strand"
 params.refalt_file = "$baseDir/data/${params.chip}.RefAlt"
@@ -167,25 +169,32 @@ process filterMergedVcf() {
     file "${params.project}.vcf.gz" into final_vcf_file_ch
     file "${params.project}.vcf.gz.tbi" into final_vcf_file_index_ch
     file "${params.project}.qc.*" into final_vcf_file_statistics
+    file "${params.project}.statistics" into merged_filter_statistics_ch
 
   """
 
+  # Filter by snp call rate and by sample call rate
+  vcftools --gzvcf ${merged_vcf_file}  \
+    --maf ${params.maf} \
+    --hwe ${params.hwe} \
+    --recode --stdout | bgzip -c > ${params.project}.filtered.vcf.gz
+
+  vcf-statistics "maf-hwe" ${params.project}.filtered.vcf.gz ${params.project}.statistics
+
   # Calculate snp call rate and sample call rate
-  jbang ${VcfQualityControl} ${merged_vcf_file} \
+  jbang ${VcfQualityControl} ${params.project}.filtered.vcf.gz \
     --minSnpCallRate ${params.minSnpCallRate}  \
     --minSampleCallRate ${params.minSampleCallRate}  \
     --chunkSize ${params.chunkSize} \
     --output ${params.project}.qc
 
   # Filter by snp call rate and by sample call rate
-  vcftools --gzvcf ${merged_vcf_file}  \
+  vcftools --gzvcf ${params.project}.filtered.vcf.gz  \
     --exclude ${params.project}.qc.snps.excluded  \
     --remove ${params.project}.qc.samples.excluded  \
     --recode --stdout | bgzip -c > ${params.project}.vcf.gz
 
   tabix ${params.project}.vcf.gz
-
-  # TODO: convert to plink an filter by --maf 0.01 --hwe 1E-6 ?
 
   vcf-statistics "final" ${params.project}.vcf.gz ${params.project}.statistics
 
@@ -225,6 +234,7 @@ process createReport {
     file samples_runs from samples_runs_ch.collect()
     file snps_runs from snps_runs_ch.collect()
     file filter_statistics from filter_statistics_ch.collect()
+    file merged_filter_statistics from merged_filter_statistics_ch.collect()
     file pre_imputation_report
 
   output:
@@ -235,9 +245,14 @@ process createReport {
     params = list(
       project = '${params.project}',
       chip = '${params.chip}',
+      maf = '${params.maf}',
+      hwe = '${params.hwe}',
+      snp_call_rate = '${params.minSnpCallRate}',
+      sample_call_rate = '${params.minSampleCallRate}',
       samples = '${samples_runs}',
       snps = '${snps_runs}',
       filter_statistics = '${filter_statistics}',
+      merged_filter_statistics = '${merged_filter_statistics}',
       samples_excluded = '${params.project}.qc.samples.excluded',
       snps_excluded = '${params.project}.qc.snps.excluded',
       samples_final = '${params.project}.qc.samples',

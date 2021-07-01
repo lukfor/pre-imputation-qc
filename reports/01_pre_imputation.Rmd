@@ -18,6 +18,11 @@ params:
   samples_excluded: ../tests/output/01_pre_imputation/test-gwas.qc.samples.excluded
   snps_excluded: ../tests/output/01_pre_imputation/test-gwas.qc.snps.excluded
   filter_statistics: ../tests/output/01_pre_imputation/single/29sep20_GSA_PLINK.statistics ../tests/output/01_pre_imputation/single/31aug20_GSA_PLINK.statistics
+  merged_filter_statistics: ../tests/output/01_pre_imputation/test-gwas.statistics
+  maf: 0
+  hwe: 1E-6
+  snp_call_rate: 0.9
+  sample_call_rate: 0.5
 ---
 
 ```{r setup, include=FALSE}
@@ -47,6 +52,10 @@ if (!file.size(params$snps_excluded) == 0) {
 }else {
   excluded_snps_count = 0
 }
+
+mergedFilterStatistics <- read.csv(params$merged_filter_statistics, sep="")
+
+
 ```
 
 # Summary
@@ -57,6 +66,7 @@ if (!file.size(params$snps_excluded) == 0) {
 | Chip          | `r params$chip`                            |
 | Samples       | `r samples_count - excluded_samples_count` (`r excluded_samples_count` excluded) |
 | SNPs          | `r snps_count - excluded_snps_count`                                            |
+
 
 # Quality Control Steps
 
@@ -126,13 +136,11 @@ Updates the chromosome, position and strand of binary ped files using strand fil
 
 The strand files contain all the variants where the match to the relevant genomic sequence >90%. The strand file contains six columns, SNP id, chromosome, position, %match to genome, strand and TOP alleles.
 
-The strand files assume that your genotype calling algorithm has exported the allele calls aligned to the **Illumina TOP strand**.
+The strand files assume that your genotype calling algorithm has exported the allele calls aligned to the **Illumina TOP strand** or **Illumina Source strand**. Please check you input file with http://mccarthy.well.ox.ac.uk/chipendium/ui/ to find correct strand files.
 
 ```{r, echo=FALSE}
 datatable(step03)
 ```
-
-TODO: add some validation to check if TOP strand was selected on export.
 
 ## Step 4: Excluding all non-autosomale snps (after update strand flips)
 
@@ -141,6 +149,8 @@ Excludes all variants not listed as autosomal-chromosomes (1-22).
 ```{r, echo=FALSE}
 datatable(step04)
 ```
+
+----
 
 ## Step 5: Harmonizing ref/alt alleles and retain only SNPs with known ref-allele
 
@@ -157,14 +167,25 @@ step06 <-  read.csv(params$samples_merged,  sep="")
 datatable(step06)
 ```
 
-## Step 7: Excluding SNPs with low call rate
+## Step 7: Excluding SNPs with low MAF or with extreme HWE deviations
 
-**`r excluded_snps_count`** snps excluded due to low call rate (Call rate < 0.9).
+- MAF: `r params$maf` 
+- HWE: `r params$hwe` 
+
+```{r, echo=FALSE}
+excluded_snps_hwe_maf_count <- step06[1,'snps'] - mergedFilterStatistics[1,'snps']
+```
+
+**`r excluded_snps_hwe_maf_count`** snps excluded due low MAF or extreme HWE deviations.
+
+## Step 8: Excluding SNPs with low call rate
+
+**`r excluded_snps_count`** snps excluded due to low call rate (Call rate < `r params$snp_call_rate` ).
 
 
-## Step 8: Excluding samples with low call rate
+## Step 9: Excluding samples with low call rate
 
-**`r excluded_samples_count`** samples excluded due to low call rate (Overall call rate < 0.5 or at least one 20MB chunk with call rate < 0.5).
+**`r excluded_samples_count`** samples excluded due to low call rate (Overall call rate < `r params$sample_call_rate` or at least one 20MB chunk with call rate < `r params$sample_call_rate`).
 
 ```{r, echo=FALSE}
 if (excluded_samples_count > 0) {
@@ -180,7 +201,7 @@ filenames_snps <- unlist(strsplit(params$snps, " "))
 for (i in 1:length(filenames)){
   filename_samples <- filenames_samples[i]
   filename_snp <- filenames_snps[i]
-  
+
   samples <- read.csv(filename_samples, sep="")
   cat("\n")
   cat("<h2>", filename, "</h2>")
@@ -190,17 +211,17 @@ for (i in 1:length(filenames)){
       geom_tile(aes(fill=call_rate)) +
       scale_fill_gradient(limits=c(0,1)) +
       theme(axis.text.y = element_text(size = 6), axis.text.x=element_blank(), axis.ticks.x=element_blank()) +
-      xlab("Chunks") + 
-      ylab("Samples") + 
-      ggtitle("Sample Call Rate") 
+      xlab("Chunks") +
+      ylab("Samples") +
+      ggtitle("Sample Call Rate")
     )
   snps <- read.csv(filename_snp, sep="")
   print(
     ggplot(snps, aes(x=call_rate)) +
       geom_histogram(binwidth = 0.05) +
-      xlab("Call Rate") + 
-      ylab("#SNPs") + 
-      ggtitle("SNP Call Rate") 
+      xlab("Call Rate") +
+      ylab("#SNPs") +
+      ggtitle("SNP Call Rate")
     )  
 }
 ```
