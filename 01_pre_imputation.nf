@@ -170,6 +170,7 @@ process filterMergedVcf() {
     file "${params.project}.vcf.gz.tbi" into final_vcf_file_index_ch
     file "${params.project}.qc.*" into final_vcf_file_statistics
     file "${params.project}.statistics" into merged_filter_statistics_ch
+    file "${params.project}.{bim,bed,fam}" into final_plink_file_ch
 
   """
 
@@ -197,6 +198,8 @@ process filterMergedVcf() {
   tabix ${params.project}.vcf.gz
 
   vcf-statistics "final" ${params.project}.vcf.gz ${params.project}.statistics
+
+  plink --vcf ${params.project}.vcf.gz  --double-id --out ${params.project}
 
   """
 
