@@ -9,6 +9,7 @@ params.minSnpCallRate = 0.9
 params.maf = 0
 params.hwe = 1E-6
 params.cleanSampleIds = true
+params.excludeSamples = null
 
 params.strand_file = "$baseDir/data/${params.chip}.strand"
 params.refalt_file = "$baseDir/data/${params.chip}.RefAlt"
@@ -53,16 +54,46 @@ if (params.cleanSampleIds) {
 
 } else {
 
-  plink_files_cleaned_ch = plink_files_ch
+  plink_files_cleaned_ch = plink_files_excluded_ch
 
 }
+
+if (params.excludeSamples != null) {
+
+  exclude_samples_file = file(params.excludeSamples)
+
+  process excludeSamples {
+
+    input:
+      set filename, file(map_file) from plink_files_cleaned_ch
+      file exclude_samples_file
+
+    output:
+      tuple val("${filename}.excluded"), file("${filename}.excluded.*") into plink_files_excluded_ch
+
+    """
+    plink --file ${filename} \
+      --remove ${exclude_samples_file} \
+      --recode \
+      --tab \
+      --out ${filename}.excluded
+    """
+
+  }
+
+} else {
+
+  plink_files_excluded_ch = plink_files_cleaned_ch
+
+}
+
 
 process filterAndFixStrandFlips {
 
   publishDir "$params.stepOutput/single", mode: 'copy'
 
   input:
-    set filename, file(map_file) from plink_files_cleaned_ch
+    set filename, file(map_file) from plink_files_excluded_ch
     file strand_file from strand_file_ch
     file refalt_file from refalt_file_ch
 
