@@ -10,6 +10,7 @@ params.maf = 0
 params.hwe = 1E-6
 params.cleanSampleIds = true
 params.excludeSamples = null
+params.useDoubleId = true
 
 params.strand_file = "$baseDir/data/${params.chip}.strand"
 params.refalt_file = "$baseDir/data/${params.chip}.RefAlt"
@@ -151,7 +152,7 @@ process filterAndFixStrandFlips {
    plink --bfile ${filename}.step04 \
      --extract ${refalt_file} \
      --a2-allele ${refalt_file} \
-     --recode vcf-iid \
+     --recode ${params.useDoubleId ? 'vcf-iid' : 'vcf'} \
      --out ${filename}.harmonized
 
   # remove all variants that have no ref allele inside
