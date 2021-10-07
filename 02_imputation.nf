@@ -91,7 +91,7 @@ process createReport {
      chip = '${params.chip}',
      qualities = '${quality_file}'
    ),
-   knit_root_dir='\$PWD', output_file='\$PWD/03_imputation_quality.html')"
+   knit_root_dir='\$PWD', output_file='\$PWD/imputation_quality.html')"
   """
 
 }
