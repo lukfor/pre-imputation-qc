@@ -16,7 +16,7 @@ ENV PATH="/opt/jbang/bin:${PATH}"
 # Install pgs-calc (not as conda package available)
 RUN mkdir /opt/pgs-calc
 WORKDIR "/opt/pgs-calc"
-RUN wget https://github.com/lukfor/pgs-calc/releases/download/v0.9.2/installer.sh && \
+RUN wget https://github.com/lukfor/pgs-calc/releases/download/v0.9.6/installer.sh && \
     chmod +x installer.sh && \
     ./installer.sh
 ENV PATH="/opt/pgs-calc:${PATH}"
