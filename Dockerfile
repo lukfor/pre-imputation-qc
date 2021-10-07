@@ -20,3 +20,12 @@ RUN wget https://github.com/lukfor/pgs-calc/releases/download/v0.9.6/installer.s
     chmod +x installer.sh && \
     ./installer.sh
 ENV PATH="/opt/pgs-calc:${PATH}"
+
+# Install imputation bot
+RUN mkdir /opt/imputationbot
+WORKDIR "/opt/imputationbot"
+RUN wget https://github.com/lukfor/imputationbot/releases/download/v0.9.3/imputationbot-0.9.3-linux.zip && \
+    unzip -q imputationbot-0.9.3-linux.zip && \
+    rm imputationbot-0.9.3-linux.zip && \
+    ./imputationbot version
+ENV PATH="/opt/imputationbot:${PATH}"
