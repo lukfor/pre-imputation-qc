@@ -8,6 +8,7 @@ params.minSampleCallRate = 0.5
 params.minSnpCallRate = 0.9
 params.maf = 0
 params.hwe = 1E-6
+params.cleanSampleIds = true
 
 params.strand_file = "$baseDir/data/${params.chip}.strand"
 params.refalt_file = "$baseDir/data/${params.chip}.RefAlt"
@@ -32,12 +33,36 @@ refalt_file_ch = file(params.refalt_file)
 chromosomes_ch = Channel.of(1..22)
 
 
+if (params.cleanSampleIds) {
+
+  process cleanSampleIds {
+
+    input:
+      set filename, file(map_file) from plink_files_ch
+
+    output:
+      tuple val("${filename}.cleaned"), file("${filename}.cleaned.*") into plink_files_cleaned_ch
+
+    """
+    # Step 0: replace all spaces with underscore (e.g. spaces in Sample IDs)
+    sed -e 's/ /_/g' ${filename}.ped > ${filename}.cleaned.ped
+    cp ${filename}.map ${filename}.cleaned.map
+    """
+
+  }
+
+} else {
+
+  plink_files_cleaned_ch = plink_files_ch
+
+}
+
 process filterAndFixStrandFlips {
 
   publishDir "$params.stepOutput/single", mode: 'copy'
 
   input:
-    set filename, file(map_file) from plink_files_ch
+    set filename, file(map_file) from plink_files_cleaned_ch
     file strand_file from strand_file_ch
     file refalt_file from refalt_file_ch
 
@@ -49,19 +74,15 @@ process filterAndFixStrandFlips {
     file "*.statistics" into filter_statistics_ch
 
   """
-  # Step 0: replace all spaces with underscore (e.g. spaces in Sample IDs)
-  sed -e 's/ /_/g' ${filename}.ped > ${filename}.step00.ped
-  #cp ${filename}.ped ${filename}.step00.ped
-  cp ${filename}.map ${filename}.step00.map
 
   # count all lines in map file and ped file as write as step0 to .statistics
-  total_samples=\$(cat ${filename}.step00.ped | wc -l)
-  total_snps=\$(cat ${filename}.step00.map | wc -l)
+  total_samples=\$(cat ${filename}.ped | wc -l)
+  total_snps=\$(cat ${filename}.map | wc -l)
   printf "name samples snps\n" > ${filename}.statistics
   printf "step00 \${total_samples} \${total_snps}" >> ${filename}.statistics
 
   # Step 1: Remove all indels, "I" and "D"
-  plink --file ${filename}.step00 \
+  plink --file ${filename} \
     --snps-only just-acgt \
     --make-bed \
     --out ${filename}.step01
@@ -92,7 +113,7 @@ process filterAndFixStrandFlips {
     --make-bed \
     --out ${filename}.step04
 
-    plink-statistics "step04" ${filename}.step04 ${filename}.statistics
+  plink-statistics "step04" ${filename}.step04 ${filename}.statistics
 
 
   # Step 5: Harmonize ref/alt alleles and retain only SNPs in the refalt file.
