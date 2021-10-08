@@ -1,5 +1,5 @@
 params.stepInput = "${params.output}/typed/vcf/*chr*.vcf.gz"
-params.stepOutput = "${params.output}/imputed/${params.refPanel}"
+params.stepOutput = "${params.output}/imputed/${params.imputation_reference_panel}"
 
 imputation_quality_report = file("$baseDir/reports/03_imputation_quality.Rmd")
 
@@ -9,7 +9,7 @@ InfoFileStatistics = "$baseDir/bin/InfoFileStatistics.java"
 // load all vcf files from input folder
 vcf_files_ch = Channel.fromPath("${params.stepInput}")
 
-if (params.token == "") {
+if (params.imputation_token == "") {
    exit 1, "Parameter 'token' is required"
 }
 
