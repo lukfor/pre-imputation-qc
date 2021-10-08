@@ -78,7 +78,7 @@ process createReport {
    params = list(
      project = '${params.project}',
      chip = '${params.chip}',
-     reference_panel = '${params.imputation_reference_panel}'
+     reference_panel = '${params.imputation_reference_panel}',
      qualities = '${quality_file}'
    ),
    knit_root_dir='\$PWD', output_file='\$PWD/imputation_quality.html')"
