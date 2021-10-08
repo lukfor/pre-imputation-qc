@@ -5,6 +5,10 @@ VcfQualityControl = "$baseDir/bin/VcfQualityControl.java"
 VcfStatistics = "$baseDir/bin/VcfStatistics.java"
 pre_imputation_report = file("$baseDir/reports/01_pre_imputation.Rmd")
 
+pca_report = file("$baseDir/reports/04_pca_smartpca.Rmd")
+high_ld_file = file("$baseDir/data/high-ld.txt")
+
+
 requiredParams = [
     'project', 'input',
     'output', 'chip',
@@ -248,7 +252,7 @@ process createFinalPlink() {
     file merged_vcf_file from final_vcf_file_ch
 
   output:
-    file "${params.project}.{bim,bed,fam}"
+    file "${params.project}.{bim,bed,fam}" into final_plink_file_ch
   """
 
   plink --vcf ${merged_vcf_file} --double-id --out ${params.project}
@@ -316,6 +320,82 @@ process createReport {
     ), knit_root_dir='\$PWD', output_file='\$PWD/pre_imputation.html')"
   """
 
+}
+
+if (params.pca_enabled){
+
+  process smartpca {
+
+    input:
+      file plink_file from final_plink_file_ch.collect()
+      file high_ld_file
+
+    output:
+      file "*.{evec,par,out,snps.weights}" into smartpca_files_ch
+      file '*.prune.in'
+      file '*.set'
+
+    """
+    # Prune, filter vcf and convert to plink (TODO: Check prune parameters and move into own process)
+    # We will conduct principle component analysis on genetic variants that are pruned for variants in linkage
+    # disequilibrium (LD) with an r2 > 0.2 in a 50kb window
+
+    plink --bfile ${params.project} --double-id --maf 0.01 --hwe 1E-6 --indep-pairwise 50 5 0.2 --out ${params.project}
+    plink --bfile ${params.project} --extract ${params.project}.prune.in --double-id --make-bed --out ${params.project}.pruned
+
+    # There are regions of long-range, high linkage diequilibrium in the human genome. These regions should be excluded when performing certain analyses such as principal component analysis on genotype data.
+
+    plink --bfile ${params.project}.pruned --make-set ${high_ld_file} --write-set --out hild
+    plink --bfile ${params.project}.pruned --exclude hild.set --make-bed --out ${params.project}
+
+    # problem with long id names in bim file --> recreate with new id?
+    awk '{print \$1,\$1"_"\$3,\$3,\$4,\$5,\$6}' ${params.project}.bim > ${params.project}.updated.bim
+
+    # todo: filter relateness pi_hat > 0.1875 (see wuttke et.al )
+
+
+
+    # TODO: create pedind file from fam file?
+
+    echo "genotypename: ${params.project}.bed" > ${params.project}.par
+    echo "snpname: ${params.project}.updated.bim" >> ${params.project}.par
+    echo "indivname: ${params.project}.fam" >> ${params.project}.par
+    echo "evecoutname: ${params.project}.evec" >> ${params.project}.par
+    echo "evaloutname: ${params.project}.eval" >> ${params.project}.par
+    echo "snpweightoutname: ${params.project}.snps.weights" >> ${params.project}.par
+    echo "altnormstyle: NO" >> ${params.project}.par
+    echo "numoutlieriter: 0" >> ${params.project}.par
+    echo "familynames: NO" >> ${params.project}.par
+    echo "numoutevec: ${params.pca_max_pc }" >> ${params.project}.par
+
+    smartpca -p ${params.project}.par >  ${params.project}.out
+    """
+
+  }
+
+  process createPcaReport {
+
+    publishDir "${params.stepOutput}/pca", mode: 'copy'
+
+    input:
+      file stats from smartpca_files_ch.collect()
+      file pca_report
+
+    output:
+      file "${params.project}.pca.txt"
+      file "*.html"
+
+    """
+    Rscript -e "require( 'rmarkdown' ); render('${pca_report}',
+      params = list(
+        evec_filename = '${params.project}.evec',
+        output_filename = '${params.project}.pca.txt',
+        snps_weights_filename = '${params.project}.snps.weights',
+        max_pc = '${params.pca_max_pc}'
+      ), knit_root_dir='\$PWD', output_file='\$PWD/pca_smartpca.html')"
+    """
+
+  }
 }
 
 workflow.onComplete {
