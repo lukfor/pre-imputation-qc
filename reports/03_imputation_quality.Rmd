@@ -11,6 +11,7 @@ output:
 params:
   project: test-gwas-test
   chip: test-chip
+  reference_panel: test-panel
   qualities:  ../tests/output/03_imputation_quality/test-gwas.qualities.txt
 ---
 
@@ -26,11 +27,12 @@ qualities <- read.csv(params$qualities, sep = ',')
 
 # Summary
 
-| Parameter     | Value                                      |
-| ------------- |--------------------------------------------|
-| Project       | `r params$project`                         |
-| Chip          | `r params$chip`                            |
-| Imputed SNPs  | `r sum(qualities$count_Rsq)`                                           |
+| Parameter        | Value                                      |
+| ---------------- |--------------------------------------------|
+| Project          | `r params$project`                         |
+| Chip             | `r params$chip`                            |
+| Reference Panel  | `r params$reference_panel`                 |
+| Imputed SNPs     | `r sum(qualities$count_Rsq)`               |
 
 
 # Imputation Quality by MAF

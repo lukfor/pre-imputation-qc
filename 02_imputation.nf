@@ -1,12 +1,3 @@
-params.project = "test-gwas"
-params.output = "tests/output"
-params.imputationserver = "https://imputationserver.sph.umich.edu"
-params.refPanel = "1000g-phase-3-v5"
-params.population = "eur"
-params.password = "lukas_48318786414"
-params.token = ""
-params.build = "hg19"
-
 params.stepInput = "${params.output}/typed/vcf/*chr*.vcf.gz"
 params.stepOutput = "${params.output}/imputed/${params.refPanel}"
 
@@ -38,14 +29,14 @@ process imputeGenotypes {
 
   """
   # configure imputationbot
-  echo -e "-  hostname: ${params.imputationserver}\n   token: ${params.token}\n" > ~/.imputationbot/imputationbot.instances
+  echo -e "-  hostname: ${params.imputation_server}\n   token: ${params.imputation_token}\n" > ~/.imputationbot/imputationbot.instances
 
   imputationbot impute \
     --files ${vcf_files} \
-    --refpanel ${params.refPanel} \
-    --population ${params.population} \
+    --refpanel ${params.imputation_reference_panel} \
+    --population ${params.imputation_population} \
     --autoDownload \
-    --password ${params.password} \
+    --password ${params.imputation_password} \
     --build ${params.build}
 
   #TODO: delete zip files
@@ -87,6 +78,7 @@ process createReport {
    params = list(
      project = '${params.project}',
      chip = '${params.chip}',
+     reference_panel = '${params.imputation_reference_panel}'
      qualities = '${quality_file}'
    ),
    knit_root_dir='\$PWD', output_file='\$PWD/imputation_quality.html')"

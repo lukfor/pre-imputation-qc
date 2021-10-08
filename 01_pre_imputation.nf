@@ -1,20 +1,3 @@
-params.project = "test-gwas"
-params.input = "tests/input/*/*.{map,ped}"
-params.output = "tests/output/"
-params.chip = "GSAMD-24v3-0-EA_20034606_A1.b37"
-
-params.chunkSize= 20000000
-params.minSampleCallRate = 0.5
-params.minSnpCallRate = 0.9
-params.maf = 0
-params.hwe = 1E-6
-params.cleanSampleIds = false
-params.excludeSamples = null
-params.useDoubleId = true
-
-params.strand_file = "$baseDir/data/${params.chip}.strand"
-params.refalt_file = "$baseDir/data/${params.chip}.RefAlt"
-
 params.stepInput = "${params.input}"
 params.stepOutput = "${params.output}/typed"
 
@@ -22,9 +5,18 @@ VcfQualityControl = "$baseDir/bin/VcfQualityControl.java"
 VcfStatistics = "$baseDir/bin/VcfStatistics.java"
 pre_imputation_report = file("$baseDir/reports/01_pre_imputation.Rmd")
 
-if (!params.input) {
-    exit 1, "Plink files not specified"
+requiredParams = [
+    'project', 'input',
+    'output', 'chip',
+    'build'
+]
+
+for (param in requiredParams) {
+    if (params[param] == null) {
+      exit 1, "Parameter ${param} is required."
+    }
 }
+
 
 // TODO: check strand/refalt file
 
@@ -90,8 +82,6 @@ if (params.excludeSamples != null) {
 
 
 process filterAndFixStrandFlips {
-
-  //publishDir "$params.stepOutput/single", mode: 'copy'
 
   input:
     set filename, file(map_file) from plink_files_excluded_ch
@@ -180,8 +170,6 @@ process filterAndFixStrandFlips {
 
 process mergeVcfFiles() {
 
-  //publishDir "$params.stepOutput", mode: 'copy'
-
   input:
     file vcf_files from vcf_files_ch.collect()
     file vcf_files_index from vcf_files_index_ch.collect()
@@ -211,8 +199,6 @@ process mergeVcfFiles() {
 }
 
 process filterMergedVcf() {
-
-  //publishDir "$params.stepOutput", mode: 'copy'
 
   input:
     file merged_vcf_file from merged_vcf_file_ch.collect()
