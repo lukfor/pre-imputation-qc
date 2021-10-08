@@ -8,7 +8,7 @@ params.minSampleCallRate = 0.5
 params.minSnpCallRate = 0.9
 params.maf = 0
 params.hwe = 1E-6
-params.cleanSampleIds = true
+params.cleanSampleIds = false
 params.excludeSamples = null
 params.useDoubleId = true
 
@@ -16,7 +16,7 @@ params.strand_file = "$baseDir/data/${params.chip}.strand"
 params.refalt_file = "$baseDir/data/${params.chip}.RefAlt"
 
 params.stepInput = "${params.input}"
-params.stepOutput = "${params.output}/01_pre_imputation"
+params.stepOutput = "${params.output}/typed"
 
 VcfQualityControl = "$baseDir/bin/VcfQualityControl.java"
 VcfStatistics = "$baseDir/bin/VcfStatistics.java"
@@ -55,7 +55,7 @@ if (params.cleanSampleIds) {
 
 } else {
 
-  plink_files_cleaned_ch = plink_files_excluded_ch
+  plink_files_cleaned_ch = plink_files_ch
 
 }
 
@@ -91,7 +91,7 @@ if (params.excludeSamples != null) {
 
 process filterAndFixStrandFlips {
 
-  publishDir "$params.stepOutput/single", mode: 'copy'
+  //publishDir "$params.stepOutput/single", mode: 'copy'
 
   input:
     set filename, file(map_file) from plink_files_excluded_ch
@@ -180,7 +180,7 @@ process filterAndFixStrandFlips {
 
 process mergeVcfFiles() {
 
-  publishDir "$params.stepOutput", mode: 'copy'
+  //publishDir "$params.stepOutput", mode: 'copy'
 
   input:
     file vcf_files from vcf_files_ch.collect()
@@ -212,7 +212,7 @@ process mergeVcfFiles() {
 
 process filterMergedVcf() {
 
-  publishDir "$params.stepOutput", mode: 'copy'
+  //publishDir "$params.stepOutput", mode: 'copy'
 
   input:
     file merged_vcf_file from merged_vcf_file_ch.collect()
@@ -223,8 +223,6 @@ process filterMergedVcf() {
     file "${params.project}.vcf.gz.tbi" into final_vcf_file_index_ch
     file "${params.project}.qc.*" into final_vcf_file_statistics
     file "${params.project}.statistics" into merged_filter_statistics_ch
-    file "${params.project}.{bim,bed,fam}" into final_plink_file_ch
-
   """
 
   # Filter by snp call rate and by sample call rate
@@ -252,7 +250,22 @@ process filterMergedVcf() {
 
   vcf-statistics "final" ${params.project}.vcf.gz ${params.project}.statistics
 
-  plink --vcf ${params.project}.vcf.gz  --double-id --out ${params.project}
+  """
+
+}
+
+process createFinalPlink() {
+
+  publishDir "$params.stepOutput/plink", mode: 'copy'
+
+  input:
+    file merged_vcf_file from final_vcf_file_ch
+
+  output:
+    file "${params.project}.{bim,bed,fam}"
+  """
+
+  plink --vcf ${merged_vcf_file} --double-id --out ${params.project}
 
   """
 
@@ -260,7 +273,7 @@ process filterMergedVcf() {
 
 process splitIntoChromosomes {
 
-  publishDir "$params.stepOutput", mode: 'copy'
+  publishDir "$params.stepOutput/vcf", mode: 'copy'
 
   input:
     val chromosome from chromosomes_ch
@@ -282,7 +295,7 @@ process splitIntoChromosomes {
 
 process createReport {
 
-  publishDir "$params.output", mode: 'copy'
+  publishDir "$params.stepOutput", mode: 'copy'
 
   input:
     file stats from merged_vcf_file_statistics.collect()
@@ -314,7 +327,7 @@ process createReport {
       samples_final = '${params.project}.qc.samples',
       snps_final = '${params.project}.qc.snps',
       samples_merged = '${params.project}.merged.statistics'
-    ), knit_root_dir='\$PWD', output_file='\$PWD/01_pre_imputation.html')"
+    ), knit_root_dir='\$PWD', output_file='\$PWD/pre_imputation.html')"
   """
 
 }
