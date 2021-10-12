@@ -6,6 +6,7 @@ VcfStatistics = "$baseDir/bin/VcfStatistics.java"
 pre_imputation_report = file("$baseDir/reports/01_pre_imputation.Rmd")
 
 pca_report = file("$baseDir/reports/04_pca_smartpca.Rmd")
+ibd_report = file("$baseDir/reports/05_ibd.Rmd")
 high_ld_file = file("$baseDir/data/high-ld.txt")
 
 
@@ -334,6 +335,7 @@ if (params.pca_enabled){
       file "*.{evec,par,out,snps.weights}" into smartpca_files_ch
       file '*.prune.in'
       file '*.set'
+      file 'plink.genome' into ibd_estimation_ch
 
     """
     # Prune, filter vcf and convert to plink (TODO: Check prune parameters and move into own process)
@@ -346,20 +348,20 @@ if (params.pca_enabled){
     # There are regions of long-range, high linkage diequilibrium in the human genome. These regions should be excluded when performing certain analyses such as principal component analysis on genotype data.
 
     plink --bfile ${params.project}.pruned --make-set ${high_ld_file} --write-set --out hild
-    plink --bfile ${params.project}.pruned --exclude hild.set --make-bed --out ${params.project}
+    plink --bfile ${params.project}.pruned --exclude hild.set --make-bed --out ${params.project}.pruned2
 
     # problem with long id names in bim file --> recreate with new id?
-    awk '{print \$1,\$1"_"\$3,\$3,\$4,\$5,\$6}' ${params.project}.bim > ${params.project}.updated.bim
+    awk '{print \$1,\$1"_"\$3,\$3,\$4,\$5,\$6}' ${params.project}.bim > ${params.project}.pruned2.updated.bim
 
     # todo: filter relateness pi_hat > 0.1875 (see wuttke et.al )
-
+    plink --bfile ${params.project}.pruned2 --genome
 
 
     # TODO: create pedind file from fam file?
 
-    echo "genotypename: ${params.project}.bed" > ${params.project}.par
-    echo "snpname: ${params.project}.updated.bim" >> ${params.project}.par
-    echo "indivname: ${params.project}.fam" >> ${params.project}.par
+    echo "genotypename: ${params.project}.pruned2.bed" > ${params.project}.par
+    echo "snpname: ${params.project}.pruned2.updated.bim" >> ${params.project}.par
+    echo "indivname: ${params.project}.pruned2.fam" >> ${params.project}.par
     echo "evecoutname: ${params.project}.evec" >> ${params.project}.par
     echo "evaloutname: ${params.project}.eval" >> ${params.project}.par
     echo "snpweightoutname: ${params.project}.snps.weights" >> ${params.project}.par
@@ -369,6 +371,27 @@ if (params.pca_enabled){
     echo "numoutevec: ${params.pca_max_pc }" >> ${params.project}.par
 
     smartpca -p ${params.project}.par >  ${params.project}.out
+    """
+
+  }
+
+  process createRelatenessReport {
+
+    publishDir "${params.stepOutput}/ibd", mode: 'copy'
+
+    input:
+      file ibd_estimation_file from ibd_estimation_ch
+      file ibd_report
+
+    output:
+      file "plink.genome"
+      file "*.html"
+
+    """
+    Rscript -e "require( 'rmarkdown' ); render('${ibd_report}',
+      params = list(
+        genome_filename = '${ibd_estimation_file}'
+      ), knit_root_dir='\$PWD', output_file='\$PWD/ibd_smartpca.html')"
     """
 
   }

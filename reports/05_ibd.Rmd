@@ -1,0 +1,33 @@
+---
+title: "5 Pairwise IBD estimation"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::robobook:
+    self_contained: true
+    thumbnails: false
+    lightbox: true
+    gallery: false
+    highlight: tango
+params:
+  genome_filename: /media/lukas/data/projects/covid-gwas/output/typed/ibd/plink.genome
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(DT)
+library(dplyr)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Pairwise IBD estimation (plink)
+
+ using estimates of pairwise IBD to find pairs of individuals who look too similar to eachother, i.e. more than we would expect by chance in a random sample.
+
+```{r warning=FALSE}
+genome=read.table(params$genome_filename, header = TRUE, stringsAsFactors = FALSE)
+
+hist(genome$PI_HAT)
+
+datatable(genome %>% filter(PI_HAT > 0.1875))
+
+```
