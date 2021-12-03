@@ -1,30 +1,27 @@
-params.project = "test-gwas"
-params.input = "tests/input/*/*.{map,ped}"
-params.output = "tests/output/"
-params.chip = "GSAMD-24v3-0-EA_20034606_A1.b37"
-
-params.chunkSize= 20000000
-params.minSampleCallRate = 0.5
-params.minSnpCallRate = 0.9
-params.maf = 0
-params.hwe = 1E-6
-params.cleanSampleIds = true
-params.excludeSamples = null
-params.useDoubleId = true
-
-params.strand_file = "$baseDir/data/${params.chip}.strand"
-params.refalt_file = "$baseDir/data/${params.chip}.RefAlt"
-
 params.stepInput = "${params.input}"
-params.stepOutput = "${params.output}/01_pre_imputation"
+params.stepOutput = "${params.output}/typed"
 
 VcfQualityControl = "$baseDir/bin/VcfQualityControl.java"
 VcfStatistics = "$baseDir/bin/VcfStatistics.java"
 pre_imputation_report = file("$baseDir/reports/01_pre_imputation.Rmd")
 
-if (!params.input) {
-    exit 1, "Plink files not specified"
+pca_report = file("$baseDir/reports/04_pca_smartpca.Rmd")
+ibd_report = file("$baseDir/reports/05_ibd.Rmd")
+high_ld_file = file("$baseDir/data/high-ld.txt")
+
+
+requiredParams = [
+    'project', 'input',
+    'output', 'chip',
+    'build'
+]
+
+for (param in requiredParams) {
+    if (params[param] == null) {
+      exit 1, "Parameter ${param} is required."
+    }
 }
+
 
 // TODO: check strand/refalt file
 
@@ -55,7 +52,7 @@ if (params.cleanSampleIds) {
 
 } else {
 
-  plink_files_cleaned_ch = plink_files_excluded_ch
+  plink_files_cleaned_ch = plink_files_ch
 
 }
 
@@ -90,8 +87,6 @@ if (params.excludeSamples != null) {
 
 
 process filterAndFixStrandFlips {
-
-  publishDir "$params.stepOutput/single", mode: 'copy'
 
   input:
     set filename, file(map_file) from plink_files_excluded_ch
@@ -180,8 +175,6 @@ process filterAndFixStrandFlips {
 
 process mergeVcfFiles() {
 
-  publishDir "$params.stepOutput", mode: 'copy'
-
   input:
     file vcf_files from vcf_files_ch.collect()
     file vcf_files_index from vcf_files_index_ch.collect()
@@ -212,8 +205,6 @@ process mergeVcfFiles() {
 
 process filterMergedVcf() {
 
-  publishDir "$params.stepOutput", mode: 'copy'
-
   input:
     file merged_vcf_file from merged_vcf_file_ch.collect()
     file merged_vcf_file_index from merged_vcf_file_index_ch.collect()
@@ -223,8 +214,6 @@ process filterMergedVcf() {
     file "${params.project}.vcf.gz.tbi" into final_vcf_file_index_ch
     file "${params.project}.qc.*" into final_vcf_file_statistics
     file "${params.project}.statistics" into merged_filter_statistics_ch
-    file "${params.project}.{bim,bed,fam}" into final_plink_file_ch
-
   """
 
   # Filter by snp call rate and by sample call rate
@@ -252,7 +241,22 @@ process filterMergedVcf() {
 
   vcf-statistics "final" ${params.project}.vcf.gz ${params.project}.statistics
 
-  plink --vcf ${params.project}.vcf.gz  --double-id --out ${params.project}
+  """
+
+}
+
+process createFinalPlink() {
+
+  publishDir "$params.stepOutput/plink", mode: 'copy'
+
+  input:
+    file merged_vcf_file from final_vcf_file_ch
+
+  output:
+    file "${params.project}.{bim,bed,fam}" into final_plink_file_ch
+  """
+
+  plink --vcf ${merged_vcf_file} --double-id --out ${params.project}
 
   """
 
@@ -260,7 +264,7 @@ process filterMergedVcf() {
 
 process splitIntoChromosomes {
 
-  publishDir "$params.stepOutput", mode: 'copy'
+  publishDir "$params.stepOutput/vcf", mode: 'copy'
 
   input:
     val chromosome from chromosomes_ch
@@ -282,7 +286,7 @@ process splitIntoChromosomes {
 
 process createReport {
 
-  publishDir "$params.output", mode: 'copy'
+  publishDir "$params.stepOutput", mode: 'copy'
 
   input:
     file stats from merged_vcf_file_statistics.collect()
@@ -314,9 +318,107 @@ process createReport {
       samples_final = '${params.project}.qc.samples',
       snps_final = '${params.project}.qc.snps',
       samples_merged = '${params.project}.merged.statistics'
-    ), knit_root_dir='\$PWD', output_file='\$PWD/01_pre_imputation.html')"
+    ), knit_root_dir='\$PWD', output_file='\$PWD/pre_imputation.html')"
   """
 
+}
+
+if (params.pca_enabled){
+
+  process smartpca {
+
+    input:
+      file plink_file from final_plink_file_ch.collect()
+      file high_ld_file
+
+    output:
+      file "*.{evec,par,out,snps.weights}" into smartpca_files_ch
+      file '*.prune.in'
+      file '*.set'
+      file 'plink.genome' into ibd_estimation_ch
+
+    """
+    # Prune, filter vcf and convert to plink (TODO: Check prune parameters and move into own process)
+    # We will conduct principle component analysis on genetic variants that are pruned for variants in linkage
+    # disequilibrium (LD) with an r2 > 0.2 in a 50kb window
+
+    plink --bfile ${params.project} --double-id --maf 0.01 --hwe 1E-6 --indep-pairwise 50 5 0.2 --out ${params.project}
+    plink --bfile ${params.project} --extract ${params.project}.prune.in --double-id --make-bed --out ${params.project}.pruned
+
+    # There are regions of long-range, high linkage diequilibrium in the human genome. These regions should be excluded when performing certain analyses such as principal component analysis on genotype data.
+
+    plink --bfile ${params.project}.pruned --make-set ${high_ld_file} --write-set --out hild
+    plink --bfile ${params.project}.pruned --exclude hild.set --make-bed --out ${params.project}.pruned2
+
+    # problem with long id names in bim file --> recreate with new id?
+    awk '{print \$1,\$1"_"\$3,\$3,\$4,\$5,\$6}' ${params.project}.bim > ${params.project}.pruned2.updated.bim
+
+    # todo: filter relateness pi_hat > 0.1875 (see wuttke et.al )
+    plink --bfile ${params.project}.pruned2 --genome
+
+
+    # TODO: create pedind file from fam file?
+
+    echo "genotypename: ${params.project}.pruned2.bed" > ${params.project}.par
+    echo "snpname: ${params.project}.pruned2.updated.bim" >> ${params.project}.par
+    echo "indivname: ${params.project}.pruned2.fam" >> ${params.project}.par
+    echo "evecoutname: ${params.project}.evec" >> ${params.project}.par
+    echo "evaloutname: ${params.project}.eval" >> ${params.project}.par
+    echo "snpweightoutname: ${params.project}.snps.weights" >> ${params.project}.par
+    echo "altnormstyle: NO" >> ${params.project}.par
+    echo "numoutlieriter: 0" >> ${params.project}.par
+    echo "familynames: NO" >> ${params.project}.par
+    echo "numoutevec: ${params.pca_max_pc }" >> ${params.project}.par
+
+    smartpca -p ${params.project}.par >  ${params.project}.out
+    """
+
+  }
+
+  process createRelatenessReport {
+
+    publishDir "${params.stepOutput}/ibd", mode: 'copy'
+
+    input:
+      file ibd_estimation_file from ibd_estimation_ch
+      file ibd_report
+
+    output:
+      file "plink.genome"
+      file "*.html"
+
+    """
+    Rscript -e "require( 'rmarkdown' ); render('${ibd_report}',
+      params = list(
+        genome_filename = '${ibd_estimation_file}'
+      ), knit_root_dir='\$PWD', output_file='\$PWD/ibd_smartpca.html')"
+    """
+
+  }
+
+  process createPcaReport {
+
+    publishDir "${params.stepOutput}/pca", mode: 'copy'
+
+    input:
+      file stats from smartpca_files_ch.collect()
+      file pca_report
+
+    output:
+      file "${params.project}.pca.txt"
+      file "*.html"
+
+    """
+    Rscript -e "require( 'rmarkdown' ); render('${pca_report}',
+      params = list(
+        evec_filename = '${params.project}.evec',
+        output_filename = '${params.project}.pca.txt',
+        snps_weights_filename = '${params.project}.snps.weights',
+        max_pc = '${params.pca_max_pc}'
+      ), knit_root_dir='\$PWD', output_file='\$PWD/pca_smartpca.html')"
+    """
+
+  }
 }
 
 workflow.onComplete {

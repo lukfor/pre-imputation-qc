@@ -20,7 +20,9 @@ dependencies:
   - r-dt=0.17
   - r-htmltools
   - r-rmdformats=1.0.1
+  - r-hexbin=1.28.2
   - pandoc=2.11.3
   - cairo
   - xorg-libxt
   - fonts-anaconda=1
+  - eigensoft

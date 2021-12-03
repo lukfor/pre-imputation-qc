@@ -1,0 +1,78 @@
+---
+title: "4 PCA Calculation"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::robobook:
+    self_contained: true
+    thumbnails: false
+    lightbox: true
+    gallery: false
+    highlight: tango
+params:
+  evec_filename: test-gwas.evec
+  output_filename: test-gwas.pca.txt
+  snps_weights_filename: test-gwas.snps.weights
+  max_pc: 3
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(DT)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Principle Components Analysis (smartpca)
+
+
+```{r warning=FALSE}
+PCA=read.table(params$evec_filename)
+names(PCA)=c("IID",paste("PC",(1:params$max_pc),sep=""),"CaseControl")
+
+PCA = cbind(FID = PCA$IID, PCA)
+
+
+write.table(PCA, params$output_filename, append = FALSE, sep = " ", dec = ".",
+            row.names = FALSE, col.names = TRUE,  quote = FALSE)
+
+```
+
+
+Principle Components Analysis is performed on the genotyped data using smartpca.
+
+- TODO: SNPs before, SNPs after MAF and pruning.
+- TODO: calc relateness and remove samples
+- TODO: plot snp loading to check if normal distributed (https://privefl.github.io/bigsnpr/articles/how-to-PCA.html)
+
+```{r warning=FALSE}
+
+ggplot() +
+  geom_point(data=PCA, aes(x=PC1, y=PC2), alpha=0.6)
+
+ggplot() +
+  geom_point(data=PCA, aes(x=PC3, y=PC4), alpha=0.6)
+
+ggplot() +
+  geom_point(data=PCA, aes(x=PC5, y=PC6), alpha=0.6)
+
+ggplot() +
+  geom_point(data=PCA, aes(x=PC7, y=PC8), alpha=0.6)
+
+ggplot() +
+  geom_point(data=PCA, aes(x=PC9, y=PC10), alpha=0.6)
+
+snps_weights <- read.table(params$snps_weights_filename)
+names(snps_weights)=c("ID","CHR","POS",paste("PC",(1:params$max_pc),sep=""))
+snps_weights$id <- as.numeric(row.names(snps_weights))
+
+ggplot(snps_weights, aes(id, PC1)) + geom_hex() +  scale_fill_gradient(low = "red", high = "yellow") + ggtitle("Loadings of PC1")
+ggplot(snps_weights, aes(id, PC2)) + geom_hex() +  scale_fill_gradient(low = "red", high = "yellow") + ggtitle("Loadings of PC2")
+ggplot(snps_weights, aes(id, PC3)) + geom_hex() +  scale_fill_gradient(low = "red", high = "yellow") + ggtitle("Loadings of PC3")
+ggplot(snps_weights, aes(id, PC4)) + geom_hex() +  scale_fill_gradient(low = "red", high = "yellow") + ggtitle("Loadings of PC4")
+ggplot(snps_weights, aes(id, PC5)) + geom_hex() +  scale_fill_gradient(low = "red", high = "yellow") + ggtitle("Loadings of PC5")
+ggplot(snps_weights, aes(id, PC6)) + geom_hex() +  scale_fill_gradient(low = "red", high = "yellow") + ggtitle("Loadings of PC6")
+ggplot(snps_weights, aes(id, PC7)) + geom_hex() +  scale_fill_gradient(low = "red", high = "yellow") + ggtitle("Loadings of PC7")
+ggplot(snps_weights, aes(id, PC8)) + geom_hex() +  scale_fill_gradient(low = "red", high = "yellow") + ggtitle("Loadings of PC8")
+ggplot(snps_weights, aes(id, PC9)) + geom_hex() +  scale_fill_gradient(low = "red", high = "yellow") + ggtitle("Loadings of PC9")
+
+
+```
