@@ -1,5 +1,5 @@
 params.stepInput = "${params.input}"
-params.stepOutput = "${params.output}/typed"
+params.stepOutput = "${params.output}/genotyped"
 
 VcfQualityControl = "$baseDir/bin/VcfQualityControl.java"
 VcfStatistics = "$baseDir/bin/VcfStatistics.java"
