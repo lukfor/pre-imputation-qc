@@ -13,14 +13,6 @@ RUN wget https://github.com/jbangdev/jbang/releases/download/v0.59.0/jbang.zip &
     rm jbang.zip
 ENV PATH="/opt/jbang/bin:${PATH}"
 
-# Install pgs-calc (not as conda package available)
-RUN mkdir /opt/pgs-calc
-WORKDIR "/opt/pgs-calc"
-RUN wget https://github.com/lukfor/pgs-calc/releases/download/v0.9.6/installer.sh && \
-    chmod +x installer.sh && \
-    ./installer.sh
-ENV PATH="/opt/pgs-calc:${PATH}"
-
 # Install imputation bot
 ENV IMPUTATIONBOT_VERSION="0.9.4"
 RUN mkdir /opt/imputationbot
