@@ -1,4 +1,4 @@
-params.stepInput = "${params.output}/typed/vcf/*chr*.vcf.gz"
+params.stepInput = "${params.output}/genotyped/vcf/*chr*.vcf.gz"
 params.stepOutput = "${params.output}/imputed/${params.imputation_reference_panel}"
 
 imputation_quality_report = file("$baseDir/reports/03_imputation_quality.Rmd")
