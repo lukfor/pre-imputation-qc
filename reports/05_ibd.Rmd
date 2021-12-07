@@ -85,7 +85,7 @@ Note that KING kinship coefficients are scaled such that duplicate samples have 
 
 ```{r warning=FALSE}
 
-kin = read.table(params$kin_filename, h=T)
+kin = read.table(params$kin_filename, h=T, comment.char = '')
 
 hist(kin$KINSHIP, col="RED", breaks=100, xlab="KINSHIP", main="")
 
