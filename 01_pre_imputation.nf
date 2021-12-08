@@ -398,7 +398,9 @@ if (params.pca_enabled){
 
     output:
       file "plink.genome"
+      file "plink2.kin0"
       file "*.html"
+      file "*.samples.txt"
 
     """
     Rscript -e "require( 'rmarkdown' ); render('${ibd_report}',
