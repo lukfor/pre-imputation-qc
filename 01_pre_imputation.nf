@@ -332,17 +332,19 @@ if (params.pca_enabled){
       file high_ld_file
 
     output:
-      file "*.{evec,par,out,snps.weights}" into smartpca_files_ch
+      file "*.{evec,par,out,snps.weights,outlier}" into smartpca_files_ch
+      file "${params.project}.pruned2.fam" into smartpca_fam_ch
       file '*.prune.in'
       file '*.set'
       file 'plink.genome' into ibd_estimation_ch
+      file 'plink2.kin0' into kin_ch
 
     """
     # Prune, filter vcf and convert to plink (TODO: Check prune parameters and move into own process)
     # We will conduct principle component analysis on genetic variants that are pruned for variants in linkage
     # disequilibrium (LD) with an r2 > 0.2 in a 50kb window
 
-    plink --bfile ${params.project} --double-id --maf 0.01 --hwe 1E-6 --indep-pairwise 50 5 0.2 --out ${params.project}
+    plink --bfile ${params.project} --double-id --maf 0.05 --hwe 0.001 --indep-pairwise 50 5 0.2 --out ${params.project}
     plink --bfile ${params.project} --extract ${params.project}.prune.in --double-id --make-bed --out ${params.project}.pruned
 
     # There are regions of long-range, high linkage diequilibrium in the human genome. These regions should be excluded when performing certain analyses such as principal component analysis on genotype data.
@@ -357,6 +359,9 @@ if (params.pca_enabled){
     plink --bfile ${params.project}.pruned2 --genome
 
 
+    # kingship
+    plink2 --bfile ${params.project}.pruned2 --make-king-table
+
     # TODO: create pedind file from fam file?
 
     echo "genotypename: ${params.project}.pruned2.bed" > ${params.project}.par
@@ -369,18 +374,26 @@ if (params.pca_enabled){
     echo "numoutlieriter: 0" >> ${params.project}.par
     echo "familynames: NO" >> ${params.project}.par
     echo "numoutevec: ${params.pca_max_pc }" >> ${params.project}.par
+    echo "numoutlierevec: 10" >> ${params.project}.par
+    echo "outlieroutname: ${params.project}.outlier" >> ${params.project}.par
+    echo "outliersigmathresh: 8.0" >> ${params.project}.par
+    echo "qtmode: 0" >> ${params.project}.par
+    echo "nsnpldregress: 2" >> ${params.project}.par
+
 
     smartpca -p ${params.project}.par >  ${params.project}.out
     """
 
   }
 
-  process createRelatenessReport {
+  process createRelatednessReport {
 
-    publishDir "${params.stepOutput}/ibd", mode: 'copy'
+    publishDir "${params.stepOutput}/relatedness", mode: 'copy'
 
     input:
       file ibd_estimation_file from ibd_estimation_ch
+      file fam_file from smartpca_fam_ch
+      file kin_file from kin_ch
       file ibd_report
 
     output:
@@ -390,8 +403,10 @@ if (params.pca_enabled){
     """
     Rscript -e "require( 'rmarkdown' ); render('${ibd_report}',
       params = list(
-        genome_filename = '${ibd_estimation_file}'
-      ), knit_root_dir='\$PWD', output_file='\$PWD/ibd_smartpca.html')"
+        genome_filename = '${ibd_estimation_file}',
+        famname = '${fam_file}',
+        kin_filename = '${kin_file}'
+      ), knit_root_dir='\$PWD', output_file='\$PWD/relatedness.html')"
     """
 
   }
@@ -406,6 +421,7 @@ if (params.pca_enabled){
 
     output:
       file "${params.project}.pca.txt"
+      file "test.outlier"
       file "*.html"
 
     """
@@ -416,6 +432,7 @@ if (params.pca_enabled){
         snps_weights_filename = '${params.project}.snps.weights',
         max_pc = '${params.pca_max_pc}'
       ), knit_root_dir='\$PWD', output_file='\$PWD/pca_smartpca.html')"
+      cp ${params.project}.outlier test.outlier
     """
 
   }
