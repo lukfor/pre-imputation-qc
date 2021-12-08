@@ -9,9 +9,9 @@ output:
     gallery: false
     highlight: tango
 params:
-  genome_filename: /Users/lukfor/Askimed Dropbox/Lukas Forer/Genepi/Projekte/covid-gwas/20211206/new-paca/plink.genome
+  genome_filename: /Users/lukfor/Askimed Dropbox/Lukas Forer/Genepi/Projekte/covid-gwas/gwas/20211206/new-paca/plink.genome
   kin_filename: /Users/lukfor/plink2.kin0
-  famname: /Users/lukfor/Askimed Dropbox/Lukas Forer/Genepi/Projekte/covid-gwas/20211206/new-paca/covid-gwas.fam
+  famname: /Users/lukfor/Askimed Dropbox/Lukas Forer/Genepi/Projekte/covid-gwas/gwas/20211206/new-paca/covid-gwas.fam
 ---
 
 ```{r setup, include=FALSE}
@@ -47,7 +47,12 @@ par(mar = c(0, 0, 0, 0))
 plot(g, vertex.size = 1,layout = layout.fruchterman.reingold,
      edge.arrow.size = 0.5, vertex.label = NA, edge.width = out$PI_HAT * 3,)
 
-datatable(out %>% select("IID1","IID2","PI_HAT"), options = list(order = list(list(3, 'desc'))))
+out_filtered = out %>% select("IID1","IID2","PI_HAT")
+
+datatable(out_filtered, options = list(order = list(list(3, 'desc'))))
+
+write.table(out_filtered, "ibd.samples.txt", append = FALSE, sep = " ", dec = ".",
+            row.names = FALSE, col.names = TRUE,  quote = FALSE)
 
 ```
 
@@ -101,6 +106,10 @@ par(mar = c(0, 0, 0, 0))
 plot(g, vertex.size = 1,layout = layout.fruchterman.reingold,
      edge.arrow.size = 0.5,  edge.width = out$KINSHIP * 5,  vertex.label = NA)
 
-datatable(out %>% select("ID1","ID2","KINSHIP"), options = list(order = list(list(3, 'desc'))))
+out_filtered = out %>% select("ID1","ID2","KINSHIP")
+datatable(out_filtered, options = list(order = list(list(3, 'desc'))))
+
+write.table(out_filtered, "kinship.samples.txt", append = FALSE, sep = " ", dec = ".",
+            row.names = FALSE, col.names = TRUE,  quote = FALSE)
 
 ```
