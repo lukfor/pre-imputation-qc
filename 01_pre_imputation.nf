@@ -317,7 +317,8 @@ process createReport {
       snps_excluded = '${params.project}.qc.snps.excluded',
       samples_final = '${params.project}.qc.samples',
       snps_final = '${params.project}.qc.snps',
-      samples_merged = '${params.project}.merged.statistics'
+      samples_merged = '${params.project}.merged.statistics',
+      version  ='${params.version}'
     ), knit_root_dir='\$PWD', output_file='\$PWD/pre_imputation.html')"
   """
 

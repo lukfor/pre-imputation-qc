@@ -23,6 +23,7 @@ params:
   hwe: 1E-6
   snp_call_rate: 0.9
   sample_call_rate: 0.5
+  version: 1.0.0
 ---
 
 ```{r setup, include=FALSE}
@@ -63,6 +64,8 @@ mergedFilterStatistics <- read.csv(params$merged_filter_statistics, sep="")
 | Parameter     | Value                                      |
 | ------------- |--------------------------------------------|
 | Project       | `r params$project`                         |
+| Pipeline Version | `r  params$version` |
+| Created on | `r Sys.Date()` |
 | Chip          | `r params$chip`                            |
 | Samples       | `r samples_count - excluded_samples_count` (`r excluded_samples_count` excluded) |
 | SNPs          | `r snps_count - excluded_snps_count`                                            |
