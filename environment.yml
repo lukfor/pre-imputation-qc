@@ -2,27 +2,27 @@
 #   conda env create -f environment.yml
 name: pre-imputation
 channels:
-  - defaults
-  - bioconda
   - conda-forge
+  - bioconda
+  - defaults
 dependencies:
-  - bcftools=1.11
-  - vcftools=0.1.16
-  - htslib=1.11
-  - plink=1.90b6.18
-  - plink2=1.90b3.35
-  - java-jdk=8.0.112
-  - unzip=6.0
-  - r=4.0
-  - r-rmarkdown=2.6
-  - r-ggplot2=3.3.3
-  - r-dplyr=1.0.2
-  - r-dt=0.17
-  - r-htmltools
-  - r-rmdformats=1.0.1
-  - r-hexbin=1.28.2
-  - pandoc=2.11.3
-  - cairo
-  - xorg-libxt
-  - fonts-anaconda=1
-  - eigensoft
+  - bioconda::bcftools=1.11
+  - bioconda::vcftools=0.1.16
+  - bioconda::htslib=1.11
+  - bioconda::plink=1.90b6.18
+  - bioconda::plink2=1.90b3.35
+  - conda-forge::openjdk=8.0.144
+  - conda-forge::unzip=6.0
+  - conda-forge::r=4.0
+  - conda-forge::r-rmarkdown=2.6
+  - conda-forge::r-ggplot2=3.3.3
+  - conda-forge::r-dplyr=1.0.2
+  - conda-forge::r-dt=0.17
+  - conda-forge::r-htmltools
+  - conda-forge::r-rmdformats=1.0.1
+  - conda-forge::r-hexbin=1.28.2
+  - conda-forge::pandoc=2.11.3
+  - conda-forge::cairo
+  - conda-forge::xorg-libxt
+  - anaconda::fonts-anaconda=1
+  - bioconda::eigensoft

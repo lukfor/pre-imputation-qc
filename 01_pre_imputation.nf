@@ -1,8 +1,6 @@
 params.stepInput = "${params.input}"
 params.stepOutput = "${params.output}/genotyped"
 
-VcfQualityControl = "$baseDir/bin/VcfQualityControl.java"
-VcfStatistics = "$baseDir/bin/VcfStatistics.java"
 pre_imputation_report = file("$baseDir/reports/01_pre_imputation.Rmd")
 
 pca_report = file("$baseDir/reports/04_pca_smartpca.Rmd")
@@ -160,10 +158,11 @@ process filterAndFixStrandFlips {
 
   tabix ${filename}.vcf.gz
 
-  vcf-statistics "step05" ${filename}.vcf.gz ${filename}.statistics
+  java -jar /opt/genomic-utils.jar vcf-statistics --name "step05" --input "${filename}.vcf.gz" --output "${filename}.statistics"
 
   # Calculate snp call rate and sample call rate (per run)
-  jbang ${VcfQualityControl} ${filename}.vcf.gz \
+  java -jar /opt/genomic-utils.jar vcf-quality-control \
+    ${filename}.vcf.gz \
     --minSnpCallRate ${params.minSnpCallRate}  \
     --minSampleCallRate ${params.minSampleCallRate}  \
     --chunkSize ${params.chunkSize} \
@@ -197,7 +196,7 @@ process mergeVcfFiles() {
 
   tabix ${params.project}.merged.vcf.gz
 
-  vcf-statistics "merged" ${params.project}.merged.vcf.gz ${params.project}.merged.statistics
+  java -jar /opt/genomic-utils.jar vcf-statistics --name "merged" --input ${params.project}.merged.vcf.gz --output ${params.project}.merged.statistics
 
   """
 
@@ -222,10 +221,11 @@ process filterMergedVcf() {
     --hwe ${params.hwe} \
     --recode --stdout | bgzip -c > ${params.project}.filtered.vcf.gz
 
-  vcf-statistics "maf-hwe" ${params.project}.filtered.vcf.gz ${params.project}.statistics
+  java -jar /opt/genomic-utils.jar vcf-statistics --name "maf-hwe"  --input ${params.project}.filtered.vcf.gz --output ${params.project}.statistics
 
   # Calculate snp call rate and sample call rate
-  jbang ${VcfQualityControl} ${params.project}.filtered.vcf.gz \
+  java -jar /opt/genomic-utils.jar vcf-quality-control \
+    ${params.project}.filtered.vcf.gz \
     --minSnpCallRate ${params.minSnpCallRate}  \
     --minSampleCallRate ${params.minSampleCallRate}  \
     --chunkSize ${params.chunkSize} \
@@ -239,7 +239,7 @@ process filterMergedVcf() {
 
   tabix ${params.project}.vcf.gz
 
-  vcf-statistics "final" ${params.project}.vcf.gz ${params.project}.statistics
+  java -jar /opt/genomic-utils.jar vcf-statistics --name "final" --input ${params.project}.vcf.gz --output ${params.project}.statistics
 
   """
 
