@@ -1,5 +1,5 @@
 ---
-title: "1 Pre-Imputation"
+title: "Pre-Imputation Quality Control"
 output:
   rmdformats::robobook:
     self_contained: true
@@ -9,16 +9,18 @@ output:
     highlight: tango
 params:
   project: test-gwas-test
+  date:
+  build:
   chip: test-chip
-  samples: ../tests/output/01_pre_imputation/single/29sep20_GSA_PLINK.qc.samples ../tests/output/01_pre_imputation/single/31aug20_GSA_PLINK.qc.samples
-  snps: ../tests/output/01_pre_imputation/single/29sep20_GSA_PLINK.qc.snps ../tests/output/01_pre_imputation/single/31aug20_GSA_PLINK.qc.snps
-  snps_final: ../tests/output/01_pre_imputation/test-gwas.qc.snps
-  samples_merged: ../tests/output/01_pre_imputation/test-gwas.merged.statistics
-  samples_final: ../tests/output/01_pre_imputation/test-gwas.qc.samples
-  samples_excluded: ../tests/output/01_pre_imputation/test-gwas.qc.samples.excluded
-  snps_excluded: ../tests/output/01_pre_imputation/test-gwas.qc.snps.excluded
-  filter_statistics: ../tests/output/01_pre_imputation/single/29sep20_GSA_PLINK.statistics ../tests/output/01_pre_imputation/single/31aug20_GSA_PLINK.statistics
-  merged_filter_statistics: ../tests/output/01_pre_imputation/test-gwas.statistics
+  samples:  
+  snps: 
+  snps_final: 
+  samples_merged: 
+  samples_final: 
+  samples_excluded: 
+  snps_excluded: 
+  filter_statistics: 
+  merged_filter_statistics: 
   maf: 0
   hwe: 1E-6
   snp_call_rate: 0.9
@@ -64,9 +66,10 @@ mergedFilterStatistics <- read.csv(params$merged_filter_statistics, sep="")
 | Parameter     | Value                                      |
 | ------------- |--------------------------------------------|
 | Project       | `r params$project`                         |
+| Created on       | `r params$date`                         |
 | Pipeline Version | `r  params$version` |
-| Created on | `r Sys.Date()` |
 | Chip          | `r params$chip`                            |
+| Build          | `r params$build`                            |
 | Samples       | `r samples_count - excluded_samples_count` (`r excluded_samples_count` excluded) |
 | SNPs          | `r snps_count - excluded_snps_count`                                            |
 
@@ -107,7 +110,7 @@ step05$filtered_snps = step04$snps - step05$snps
 | Parameter     | Value                                      |
 | ------------- |--------------------------------------------|
 | Number of Runs       | `r length(filenames)`                            |
-| SNPs per Run          | `r mean(step00$snps)` +/- `r sd(step00$snps)`                           |
+| SNPs per Run          | `r prettyNum(mean(step00$snps), scientific=FALSE), big.mark=”,”` +/- `r prettyNum(sd(step00$snps), scientific=FALSE, big.mark=”,”)`                           |
 
 ## Raw Data
 
