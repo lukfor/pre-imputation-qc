@@ -19,7 +19,7 @@ curl -s https://get.nextflow.io | bash
 Build docker image before run the pipeline:
 
 ```
-docker build -t lukfor/pre-imputation . # don't ingore the dot here
+docker build -t genepi/pre-imputation-qc . # don't ingore the dot here
 ```
 
 Test the pipeline and the created docker image with test-data:
