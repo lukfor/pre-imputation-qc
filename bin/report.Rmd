@@ -110,7 +110,7 @@ step05$filtered_snps = step04$snps - step05$snps
 | Parameter     | Value                                      |
 | ------------- |--------------------------------------------|
 | Number of Runs       | `r length(filenames)`                            |
-| SNPs per Run          | `r prettyNum(mean(step00$snps), scientific=FALSE), big.mark=”,”` +/- `r prettyNum(sd(step00$snps), scientific=FALSE, big.mark=”,”)`                           |
+| SNPs per Run          | `r prettyNum(mean(step00$snps), scientific=FALSE, big.mark=",")` +/- `r prettyNum(sd(step00$snps), scientific=FALSE, big.mark=",")`                           |
 
 ## Raw Data
 
