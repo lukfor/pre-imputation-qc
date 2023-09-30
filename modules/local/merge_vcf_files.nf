@@ -15,7 +15,7 @@ process MERGE_VCF_FILES {
     # if contains a spaceh --> multiple files --> merge needed
     if [[ "${vcf_files}" = *" "* ]]; then
         # TODO: -m id still needed with extract? use -O z to avoid bgzip.
-        bcftools merge -m id ${vcf_files} -O v > ${params.project}.merged.vcf
+        bcftools merge --force-samples -m id ${vcf_files} -O v > ${params.project}.merged.vcf
         bgzip ${params.project}.merged.vcf
     else
         cp ${vcf_files} ${params.project}.merged.vcf.gz

@@ -11,7 +11,7 @@ include { CREATE_REPORT } from "./modules/local/create_report"
 
 
 requiredParams = [
-    'project', 'input',
+    'project',
     'output', 'chip',
     'build', 'strand_file',
     'refalt_file'
@@ -24,13 +24,26 @@ for (param in requiredParams) {
 }
 
 
-// load all plink files from input folder
-plink_files = Channel.fromFilePairs(
-    params.input,
-    size: 2,
-    flat: true,
-    checkIfExists: true
-)
+//load all plink files from sheet or from file pattern
+if (params.input_csv != null) {
+
+    plink_files = Channel.fromPath(params.input_csv, checkIfExists: true)
+        .splitCsv(header: true, sep: ';')
+        .map {
+            row -> tuple(row.run, row.prefix, file(row.map, checkIfExists: true), file(row.ped, checkIfExists: true))
+        }
+
+} else if (params.input != null) {
+
+    plink_files = Channel.fromFilePairs(params.input, size: 2, flat: true, checkIfExists: true)
+        .map {
+            row -> tuple(row[0], row[0], row[1], row[2])
+        }
+
+} else {
+    exit 1, "Parameter 'input' or 'input_csv' is required."
+}
+
 chromosomes = Channel.of(1..22)
 
 
