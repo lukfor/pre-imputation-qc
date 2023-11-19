@@ -30,7 +30,7 @@ if (params.input_csv != null) {
     plink_files = Channel.fromPath(params.input_csv, checkIfExists: true)
         .splitCsv(header: true, sep: ';')
         .map {
-            row -> tuple(row.run, row.prefix, file(row.map, checkIfExists: true), file(row.ped, checkIfExists: true))
+            row -> tuple("run_${row.run}", row.prefix, file(row.map, checkIfExists: true), file(row.ped, checkIfExists: true))
         }
 
 } else if (params.input != null) {
@@ -70,9 +70,19 @@ workflow {
         file(params.refalt_file, checkIfExists: true)
     )
 
+    vcf_files = FILTER_AND_FIX_STRAND_FLIPS.out.vcf_files
+    vcf_files_index = FILTER_AND_FIX_STRAND_FLIPS.out.vcf_files_index
+
+    if (params.reference.vcf != null) {
+        vcf_files = vcf_files.concat(Channel.of(file(params.reference.vcf, checkIfExists: true)))
+        vcf_files_index = vcf_files_index.concat(Channel.of(file(params.reference.vcf  + ".tbi", checkIfExists: true)))
+    }
+
+    //TODO: write a samples.csv file: sample,type (reference or study) --> this file is then used as input to pgs-reporter
+
     MERGE_VCF_FILES (
-        FILTER_AND_FIX_STRAND_FLIPS.out.vcf_files.collect(),
-        FILTER_AND_FIX_STRAND_FLIPS.out.vcf_files_index.collect()
+        vcf_files.collect(),
+        vcf_files_index.collect()
     )
 
     FILTER_MERGED_VCF (

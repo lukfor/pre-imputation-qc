@@ -1,5 +1,7 @@
 process MERGE_VCF_FILES {
 
+    publishDir "$params.output/vcf-single", mode: 'copy'
+
     input:
     path(vcf_files)
     path(vcf_files_index)
@@ -17,6 +19,7 @@ process MERGE_VCF_FILES {
         # TODO: -m id still needed with extract? use -O z to avoid bgzip.
         bcftools merge --force-samples -m id ${vcf_files} -O v > ${params.project}.merged.vcf
         bgzip ${params.project}.merged.vcf
+        #bcftools merge --force-samples -m id ${vcf_files} -O z > ${params.project}.merged.vcf.gz
     else
         cp ${vcf_files} ${params.project}.merged.vcf.gz
     fi
