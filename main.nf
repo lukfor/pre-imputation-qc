@@ -8,7 +8,8 @@ include { FILTER_MERGED_VCF } from "./modules/local/filter_merged_vcf"
 include { CREATE_FINAL_PLINK } from "./modules/local/create_final_plink"
 include { SPLIT_INTO_CHROMOSOMES } from "./modules/local/split_into_chromosomes"
 include { CREATE_REPORT } from "./modules/local/create_report"
-
+include { GET_SAMPLES } from "./modules/local/get_samples"
+include { MERGE_SAMPLES } from "./modules/local/merge_samples"
 
 requiredParams = [
     'project',
@@ -74,8 +75,21 @@ workflow {
     vcf_files_index = FILTER_AND_FIX_STRAND_FLIPS.out.vcf_files_index
 
     if (params.reference.vcf != null) {
+        study_files = vcf_files.map{
+            it -> tuple(it, "study")
+        }
+        study_files = study_files.concat(Channel.of(tuple(file(params.reference.vcf, checkIfExists: true), "reference")))
+        GET_SAMPLES (
+            study_files
+        )
+
+        MERGE_SAMPLES (
+            GET_SAMPLES.out.collect()
+        )
+
         vcf_files = vcf_files.concat(Channel.of(file(params.reference.vcf, checkIfExists: true)))
         vcf_files_index = vcf_files_index.concat(Channel.of(file(params.reference.vcf  + ".tbi", checkIfExists: true)))
+
     }
 
     //TODO: write a samples.csv file: sample,type (reference or study) --> this file is then used as input to pgs-reporter
