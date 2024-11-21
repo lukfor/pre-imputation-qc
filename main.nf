@@ -27,11 +27,14 @@ for (param in requiredParams) {
 
 //load all plink files from sheet or from file pattern
 if (params.input_csv != null) {
-
+    
     plink_files = Channel.fromPath(params.input_csv, checkIfExists: true)
         .splitCsv(header: true, sep: ';')
-        .map {
-            row -> tuple("run_${row.run}", row.prefix, file(row.map, checkIfExists: true), file(row.ped, checkIfExists: true))
+        .map { row ->
+            def csvDir = file(params.input_csv).parent
+            def mapFile = csvDir.resolve(row.map)
+            def pedFile = csvDir.resolve(row.ped)
+            tuple("run_${row.run}", row.prefix, file(mapFile, checkIfExists: true), file(pedFile, checkIfExists: true))
         }
 
 } else if (params.input != null) {
