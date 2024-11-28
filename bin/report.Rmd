@@ -207,6 +207,7 @@ filenames_snps <- unlist(strsplit(params$snps, " "))
 for (i in 1:length(filenames)){
   filename_samples <- filenames_samples[i]
   filename_snp <- filenames_snps[i]
+  filename <- filenames[i]
 
   samples <- read.csv(filename_samples, sep="")
   cat("\n")
